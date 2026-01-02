@@ -45,7 +45,7 @@ export default function LoginClient() {
     <main className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
       <section className="hidden lg:flex items-center justify-center p-12 bg-gradient-to-br from-[#0b1220] via-[#111827] to-[#0b1220]">
         <div className="max-w-md space-y-4">
-          <div className="text-white/70 text-sm font-semibold tracking-wide">SellerPic Studio</div>
+          <div className="text-white/70 text-sm font-semibold tracking-wide">Yuneekwayai</div>
           <h1 className="text-4xl font-semibold tracking-tight text-white">Supercharge Your Photos with AI</h1>
           <p className="text-white/70 text-lg">Boost sales in minutes with consistent ecommerce visuals.</p>
         </div>

@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SellerPic-Style AI Studio",
+  title: "Yuneekwayai",
   description: "Ecommerce image generation SaaS powered by Nano Banana",
 };
 

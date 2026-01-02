@@ -7,7 +7,7 @@
   --sp-muted: #64748b;
   --sp-border: #e5e7eb;
   --sp-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
-  --sp-primary: #111827; /* near-black like SellerPic CTAs */
+  --sp-primary: #111827; /* near-black CTAs */
   --sp-primary-hover: #0b1220;
   --sp-danger: #ef4444;
 }
