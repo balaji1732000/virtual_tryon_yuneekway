@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors } from "lucide-react";
+import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock } from "lucide-react";
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutGrid },
+  { href: "/app/history", label: "History", icon: Clock },
   { href: "/app/profiles", label: "Model Profiles", icon: User },
   { href: "/app/product-pack", label: "Product Pack", icon: Package },
   { href: "/app/try-on", label: "Virtual Try-On", icon: RefreshCw },

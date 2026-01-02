@@ -31,6 +31,8 @@ export default function ProfileCreator() {
     const [error, setError] = useState<string | null>(null);
 
     const activeId = activeProfile?.id || null;
+    const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+    const isCreatingNew = !selectedProfileId;
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -64,6 +66,14 @@ export default function ProfileCreator() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Keep dropdown selection in sync with active profile (but don't force when user is creating new)
+    useEffect(() => {
+        if (activeId && selectedProfileId !== activeId) {
+            setSelectedProfileId(activeId);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeId]);
+
     const handleSelectProfile = (p: any) => {
         setActiveProfile({
             id: p.id,
@@ -80,6 +90,19 @@ export default function ProfileCreator() {
         setRegion(p.region);
         setBackground(p.background);
         setImage(p.referenceImageUrl || null);
+        setFile(null);
+        setSelectedProfileId(p.id);
+    };
+
+    const startNewProfile = () => {
+        setSelectedProfileId("");
+        setError(null);
+        setName("");
+        setGender("Female");
+        setSkinTone("Medium");
+        setRegion("Europe");
+        setBackground("Studio Grey");
+        setImage(null);
         setFile(null);
     };
 
@@ -127,14 +150,23 @@ export default function ProfileCreator() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
                     <CardHeader title="Profile details" subtitle="Name + styling context" right={
-                        <button
-                            type="button"
-                            onClick={loadProfiles}
-                            className="text-sm text-slate-700 hover:underline disabled:opacity-50"
-                            disabled={loading}
-                        >
-                            Refresh
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={startNewProfile}
+                                className="text-sm text-slate-700 hover:underline"
+                            >
+                                New profile
+                            </button>
+                            <button
+                                type="button"
+                                onClick={loadProfiles}
+                                className="text-sm text-slate-700 hover:underline disabled:opacity-50"
+                                disabled={loading}
+                            >
+                                Refresh
+                            </button>
+                        </div>
                     } />
                     <CardBody className="space-y-4">
                         {error && (
@@ -146,15 +178,16 @@ export default function ProfileCreator() {
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-slate-700">Existing profiles</label>
                             <select
-                                value={activeId || ""}
+                                value={selectedProfileId}
                                 onChange={(e) => {
                                     const id = e.target.value;
+                                    setSelectedProfileId(id);
                                     const p = profiles.find((x) => x.id === id);
                                     if (p) handleSelectProfile(p);
                                 }}
                                 className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
                             >
-                                <option value="">-- Select a profile --</option>
+                                <option value="">-- New profile --</option>
                                 {profiles.map((p) => (
                                     <option key={p.id} value={p.id}>
                                         {p.name}
@@ -209,7 +242,7 @@ export default function ProfileCreator() {
                             disabled={loading || (!file && !image)}
                             className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <CheckCircle size={18} /> Save profile to workspace
+                            <CheckCircle size={18} /> {isCreatingNew ? "Create profile" : "Save as new profile"}
                         </button>
                     </CardBody>
                 </Card>

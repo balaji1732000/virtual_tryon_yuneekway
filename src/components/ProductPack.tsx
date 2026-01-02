@@ -41,6 +41,14 @@ export default function ProductPack() {
         loadProfiles();
     }, []);
 
+    // Auto-select first available profile if none is active yet
+    useEffect(() => {
+        if (!activeProfile && profiles.length > 0) {
+            selectProfileById(profiles[0].id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profiles.length]);
+
     const selectProfileById = (id: string) => {
         const p = profiles.find((x) => x.id === id);
         if (!p) return;
@@ -152,9 +160,12 @@ export default function ProductPack() {
                             </select>
                             <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
                                 <span>{profiles.length} profile(s)</span>
-                                <button type="button" className="hover:underline" onClick={loadProfiles} disabled={profilesLoading}>
-                                    Refresh
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    <a href="/app/profiles" className="hover:underline">Create new</a>
+                                    <button type="button" className="hover:underline" onClick={loadProfiles} disabled={profilesLoading}>
+                                        Refresh
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
