@@ -21,16 +21,21 @@ export default function LoginClient() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     setLoading(true);
     setError(null);
     try {
-      if (!supabase) return;
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       router.replace(nextPath);
       router.refresh();
     } catch (err: any) {
-      setError(err?.message || "Login failed");
+      const msg = String(err?.message || "Login failed");
+      if (msg.toLowerCase().includes("email logins are disabled")) {
+        setError("Email/password login is disabled in Supabase. Enable it in Supabase Dashboard → Authentication → Providers → Email.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -80,7 +85,7 @@ export default function LoginClient() {
 
             {error && <div className="text-xs text-secondary">{error}</div>}
 
-            <button disabled={loading} className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+            <button disabled={loading || !supabase} className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? "Signing in..." : "Sign in"}
             </button>
 

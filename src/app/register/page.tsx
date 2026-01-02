@@ -19,17 +19,29 @@ export default function RegisterPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     setLoading(true);
     setError(null);
     setSuccess(null);
     try {
-      if (!supabase) return;
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      setSuccess("Account created. You can log in now.");
-      router.push("/login");
+      // 1) Create the user
+      const signUp = await supabase.auth.signUp({ email, password });
+      if (signUp.error) throw signUp.error;
+
+      // 2) Ensure we can immediately sign in (avoids “invalid credentials” confusion)
+      const signIn = await supabase.auth.signInWithPassword({ email, password });
+      if (signIn.error) throw signIn.error;
+
+      setSuccess("Account created. Redirecting…");
+      router.replace("/app");
+      router.refresh();
     } catch (err: any) {
-      setError(err?.message || "Sign up failed");
+      const msg = String(err?.message || "Sign up failed");
+      if (msg.toLowerCase().includes("email signups are disabled")) {
+        setError("Email/password signup is disabled in Supabase. Enable it in Supabase Dashboard → Authentication → Providers → Email.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -72,7 +84,7 @@ export default function RegisterPage() {
           {error && <div className="text-xs text-secondary">{error}</div>}
           {success && <div className="text-xs text-accent">{success}</div>}
 
-          <button disabled={loading} className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+          <button disabled={loading || !supabase} className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? "Creating..." : "Sign up"}
           </button>
 

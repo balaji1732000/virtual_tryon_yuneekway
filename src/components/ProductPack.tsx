@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Upload, Package, Layers, Play, Download, CheckCircle, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { Play, Download, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
 
 const ANGLES = ["Front", "Back", "Left-Side", "Right-Side", "Three-quarter", "Full body"];
 const RATIOS = ["1:1 (Square)", "2:3 (Portrait)", "3:2 (Landscape)", "4:5 (Portrait)", "9:16 (Vertical)"];
@@ -84,146 +85,152 @@ export default function ProductPack() {
     };
 
     return (
-        <div className="p-6 md:p-8 space-y-8">
+        <div className="space-y-6">
+            <PageHeader
+                title="Product Pack"
+                subtitle="Generate a consistent multi-angle set using your active model profile."
+            />
+
             {!activeProfile && (
-                <div className="p-4 bg-secondary/10 border border-secondary/20 rounded-2xl flex items-center gap-3 text-secondary animate-fade-in">
-                    <AlertCircle />
-                    <p className="text-sm font-medium">No active profile found. Please set one up in the "Create Model Profile" tab.</p>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-center gap-2">
+                    <AlertCircle size={14} />
+                    <span>No active profile found. Create one under “Model Profiles” first.</span>
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium opacity-70">Product ID</label>
-                            <input
-                                type="text"
-                                value={productId}
-                                onChange={e => setProductId(e.target.value)}
-                                placeholder="e.g. SKU123"
-                                className="w-full input-field"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium opacity-70">Product Title</label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={e => setTitle(e.target.value)}
-                                placeholder="e.g. Floral Summer Dress"
-                                className="w-full input-field"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium opacity-70">Front View (Required)</label>
-                            <input
-                                type="file"
-                                onChange={e => setFrontImage(e.target.files?.[0] || null)}
-                                className="w-full text-xs"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium opacity-70">Back View (Optional)</label>
-                            <input
-                                type="file"
-                                onChange={e => setBackImage(e.target.files?.[0] || null)}
-                                className="w-full text-xs"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium opacity-70">Angles to Render</label>
-                        <div className="flex flex-wrap gap-2">
-                            {ANGLES.map(angle => (
-                                <button
-                                    key={angle}
-                                    onClick={() => handleToggleAngle(angle)}
-                                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${selectedAngles.includes(angle)
-                                        ? "bg-primary text-white"
-                                        : "bg-white/10 hover:bg-white/20"
-                                        }`}
-                                >
-                                    {angle}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium opacity-70">Aspect Ratio</label>
-                        <select value={ratio} onChange={e => setRatio(e.target.value)} className="w-full input-field">
-                            {RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                    </div>
-
-                    <button
-                        onClick={handleGenerate}
-                        disabled={isGenerating || !activeProfile}
-                        className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isGenerating ? (
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Generating Set...
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="lg:col-span-1">
+                    <CardHeader title="Inputs" subtitle="SKU + images" />
+                    <CardBody className="space-y-4">
+                        <div className="grid grid-cols-1 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-700">Product ID (SKU)</label>
+                                <input
+                                    type="text"
+                                    value={productId}
+                                    onChange={e => setProductId(e.target.value)}
+                                    placeholder="e.g. SKU123"
+                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                />
                             </div>
-                        ) : (
-                            <>
-                                <Play size={20} /> Generate Product Set
-                            </>
-                        )}
-                    </button>
-
-                    {error && (
-                        <div className="p-3 bg-secondary/10 border border-secondary/20 rounded-xl text-secondary text-xs flex items-center gap-2">
-                            <AlertCircle size={14} /> {error}
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-700">Title</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={e => setTitle(e.target.value)}
+                                    placeholder="Optional"
+                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                />
+                            </div>
                         </div>
-                    )}
-                </div>
 
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-semibold flex items-center gap-2">
-                            <Layers size={18} className="text-primary" /> Generated Renders
-                        </h3>
-                        {results.length > 0 && (
-                            <button className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
-                                <Download size={14} /> Download ZIP
-                            </button>
-                        )}
-                    </div>
+                        <div className="grid grid-cols-1 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-700">Front view (required)</label>
+                                <input type="file" onChange={e => setFrontImage(e.target.files?.[0] || null)} className="w-full text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium text-slate-700">Back view (optional)</label>
+                                <input type="file" onChange={e => setBackImage(e.target.files?.[0] || null)} className="w-full text-sm" />
+                            </div>
+                        </div>
+                    </CardBody>
+                </Card>
 
-                    <div className="grid grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {results.map((res, i) => (
-                            <div key={i} className="glass-panel p-2 space-y-2 group">
-                                <div className="aspect-[3/4] rounded-lg overflow-hidden relative">
-                                    <img src={res.image} alt={res.angle} className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button className="p-2 bg-white rounded-full text-primary">
-                                            <Download size={16} />
-                                        </button>
-                                    </div>
+                <Card className="lg:col-span-1">
+                    <CardHeader title="Settings" subtitle="Angles + ratio" />
+                    <CardBody className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Angles to render</label>
+                            <div className="flex flex-wrap gap-2">
+                                {ANGLES.map(angle => (
+                                    <button
+                                        key={angle}
+                                        onClick={() => handleToggleAngle(angle)}
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${selectedAngles.includes(angle)
+                                            ? "bg-black text-white border-black"
+                                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                                            }`}
+                                    >
+                                        {angle}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-slate-700">Aspect ratio</label>
+                            <select
+                                value={ratio}
+                                onChange={e => setRatio(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                            >
+                                {RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+
+                        <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || !activeProfile}
+                            className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isGenerating ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Generating…
                                 </div>
-                                <p className="text-[10px] font-medium text-center opacity-70">{res.angle}</p>
-                            </div>
-                        ))}
-                        {isGenerating && results.length < selectedAngles.length && (
-                            <div className="glass-panel aspect-[3/4] flex items-center justify-center">
-                                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                            </div>
-                        )}
-                        {results.length === 0 && !isGenerating && (
-                            <div className="col-span-2 aspect-[3/2] flex flex-col items-center justify-center opacity-30">
-                                <ImageIcon size={48} className="mb-2" />
-                                <p className="text-sm">Renders will appear here</p>
+                            ) : (
+                                <>
+                                    <Play size={18} /> Generate set
+                                </>
+                            )}
+                        </button>
+
+                        {error && (
+                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                                <AlertCircle size={14} /> {error}
                             </div>
                         )}
-                    </div>
-                </div>
+                    </CardBody>
+                </Card>
+
+                <Card className="lg:col-span-1">
+                    <CardHeader
+                        title="Outputs"
+                        subtitle={jobId ? `Job: ${jobId}` : "Generated renders"}
+                        right={results.length > 0 ? (
+                            <button className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" disabled>
+                                <Download size={16} /> ZIP (next)
+                            </button>
+                        ) : null}
+                    />
+                    <CardBody>
+                        <div className="grid grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pr-1">
+                            {results.map((res, i) => (
+                                <a key={i} href={res.image} target="_blank" rel="noreferrer" className="group block">
+                                    <div className="aspect-[3/4] rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                                        <img src={res.image} alt={res.angle} className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform" />
+                                    </div>
+                                    <div className="mt-1 text-[11px] text-slate-600 text-center">{res.angle}</div>
+                                </a>
+                            ))}
+
+                            {isGenerating && results.length < selectedAngles.length && (
+                                <div className="aspect-[3/4] rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                    <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+                                </div>
+                            )}
+
+                            {results.length === 0 && !isGenerating && (
+                                <div className="col-span-2 aspect-[3/2] rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400">
+                                    <ImageIcon size={42} className="mb-2" />
+                                    <div className="text-sm">Renders will appear here</div>
+                                </div>
+                            )}
+                        </div>
+                    </CardBody>
+                </Card>
             </div>
         </div>
     );

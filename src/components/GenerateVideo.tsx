@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Video, Play, Download, AlertCircle, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Video, Download, AlertCircle, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
 
 export default function GenerateVideo() {
     const [dressImage, setDressImage] = useState<File | null>(null);
@@ -84,23 +85,23 @@ export default function GenerateVideo() {
     }, [operationId, isGenerating]);
 
     return (
-        <div className="p-6 md:p-8 space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                    <div className="space-y-4">
-                        <label className="text-sm font-medium opacity-70 flex items-center gap-2">
-                            <ImageIcon size={16} /> Upload Garment Image
-                        </label>
+        <div className="space-y-6">
+            <PageHeader title="Video Generator" subtitle="Generate a short fashion video (async) using your garment image + prompt." />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card>
+                    <CardHeader title="Input" subtitle="Garment image" />
+                    <CardBody className="space-y-4">
                         <div
-                            className="aspect-[3/4] glass-panel border-2 border-dashed border-primary/30 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer max-w-xs mx-auto"
+                            className="aspect-[3/4] rounded-2xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('dress-upload-video')?.click()}
                         >
                             {dressPreview ? (
                                 <img src={dressPreview} alt="Dress" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-center p-4">
-                                    <ImageIcon size={48} className="mx-auto mb-2 opacity-30 group-hover:opacity-100 transition-opacity" />
-                                    <p className="text-sm opacity-50">Upload dress photo</p>
+                                <div className="text-center p-6 text-slate-500">
+                                    <ImageIcon size={42} className="mx-auto mb-2 opacity-70" />
+                                    <div className="text-sm">Click to upload</div>
                                 </div>
                             )}
                             <input
@@ -111,75 +112,74 @@ export default function GenerateVideo() {
                                 onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
                             />
                         </div>
-                    </div>
+                    </CardBody>
+                </Card>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium opacity-70">Video Prompt</label>
+                <Card>
+                    <CardHeader title="Prompt" subtitle="Describe the video" />
+                    <CardBody className="space-y-4">
                         <textarea
                             value={prompt}
                             onChange={e => setPrompt(e.target.value)}
-                            placeholder="e.g. A cinematic fashion video of a model walking in a garden wearing this dress, soft sunlight, 4k..."
-                            className="w-full input-field min-h-[120px] resize-none"
+                            placeholder="e.g. A cinematic runway walk, soft sunlight, 4k…"
+                            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                            rows={8}
                         />
-                    </div>
 
-                    <button
-                        onClick={handleGenerate}
-                        disabled={isGenerating || !dressImage || !prompt}
-                        className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isGenerating ? (
-                            <div className="flex items-center gap-2">
-                                <Loader2 size={20} className="animate-spin" />
-                                {operationId ? "Generating Video..." : "Starting Generation..."}
+                        <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || !dressImage || !prompt}
+                            className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isGenerating ? (
+                                <div className="flex items-center gap-2">
+                                    <Loader2 size={18} className="animate-spin" />
+                                    {operationId ? "Generating…" : "Starting…"}
+                                </div>
+                            ) : (
+                                <>
+                                    <Video size={18} /> Generate
+                                </>
+                            )}
+                        </button>
+
+                        {error && (
+                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                                <AlertCircle size={14} /> {error}
+                            </div>
+                        )}
+                    </CardBody>
+                </Card>
+
+                <Card>
+                    <CardHeader
+                        title="Result"
+                        subtitle={operationId ? `Operation: ${operationId}` : "Generated video"}
+                        right={videoUrl ? (
+                            <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={videoUrl} download>
+                                <Download size={16} /> Download
+                            </a>
+                        ) : null}
+                    />
+                    <CardBody>
+                        {videoUrl ? (
+                            <div className="aspect-[16/9] rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                                <video src={videoUrl} controls className="w-full h-full object-contain" />
                             </div>
                         ) : (
-                            <>
-                                <Video size={20} /> Generate Fashion Video
-                            </>
-                        )}
-                    </button>
-
-                    {error && (
-                        <div className="p-3 bg-secondary/10 border border-secondary/20 rounded-xl text-secondary text-xs flex items-center gap-2">
-                            <AlertCircle size={14} /> {error}
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center gap-2">
-                        <Video size={18} className="text-primary" /> Generated Video
-                    </h3>
-                    <div className="glass-panel aspect-[16/9] p-2 relative group flex items-center justify-center overflow-hidden">
-                        {videoUrl ? (
-                            <video
-                                src={videoUrl}
-                                controls
-                                className="w-full h-full object-contain rounded-xl"
-                            />
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center opacity-20">
+                            <div className="aspect-[16/9] rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400">
                                 {isGenerating ? (
-                                    <div className="flex flex-col items-center gap-4">
-                                        <Loader2 size={48} className="animate-spin text-primary" />
-                                        <p className="text-sm animate-pulse">This may take a minute or two...</p>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Loader2 size={18} className="animate-spin" />
+                                        This may take a minute…
                                     </div>
                                 ) : (
-                                    <>
-                                        <Video size={64} className="mb-4" />
-                                        <p>Generated video will appear here</p>
-                                    </>
+                                    <div className="text-sm">No output yet</div>
                                 )}
                             </div>
                         )}
-                    </div>
-                    {videoUrl && (
-                        <button className="w-full btn-secondary flex items-center justify-center gap-2">
-                            <Download size={18} /> Download Video
-                        </button>
-                    )}
-                </div>
+                    </CardBody>
+                </Card>
             </div>
         </div>
     );
