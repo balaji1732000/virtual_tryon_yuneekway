@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { Play, Download, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
@@ -9,7 +9,7 @@ const ANGLES = ["Front", "Back", "Left-Side", "Right-Side", "Three-quarter", "Fu
 const RATIOS = ["1:1 (Square)", "2:3 (Portrait)", "3:2 (Landscape)", "4:5 (Portrait)", "9:16 (Vertical)"];
 
 export default function ProductPack() {
-    const { activeProfile } = useAppStore();
+    const { activeProfile, setActiveProfile } = useAppStore();
     const [productId, setProductId] = useState("");
     const [title, setTitle] = useState("");
     const [frontImage, setFrontImage] = useState<File | null>(null);
@@ -20,6 +20,40 @@ export default function ProductPack() {
     const [results, setResults] = useState<{ angle: string; image: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
+    const [profiles, setProfiles] = useState<any[]>([]);
+    const [profilesLoading, setProfilesLoading] = useState(false);
+
+    const loadProfiles = async () => {
+        setProfilesLoading(true);
+        try {
+            const res = await fetch("/api/profiles");
+            const json = await res.json();
+            if (!res.ok) throw new Error(json?.error || "Failed to load profiles");
+            setProfiles(json.profiles || []);
+        } catch (e: any) {
+            // keep silent here; we already show errors on generate
+        } finally {
+            setProfilesLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadProfiles();
+    }, []);
+
+    const selectProfileById = (id: string) => {
+        const p = profiles.find((x) => x.id === id);
+        if (!p) return;
+        setActiveProfile({
+            id: p.id,
+            name: p.name,
+            gender: p.gender,
+            skinTone: p.skinTone,
+            region: p.region,
+            background: p.background,
+            referenceImage: p.referenceImageUrl || undefined,
+        });
+    };
 
     const handleToggleAngle = (angle: string) => {
         setSelectedAngles(prev =>
@@ -29,7 +63,7 @@ export default function ProductPack() {
 
     const handleGenerate = async () => {
         if (!activeProfile) {
-            setError("Please create and save a model profile first.");
+            setError("Please select a model profile first.");
             return;
         }
         if (!productId || !frontImage) {
@@ -94,7 +128,7 @@ export default function ProductPack() {
             {!activeProfile && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-center gap-2">
                     <AlertCircle size={14} />
-                    <span>No active profile found. Create one under “Model Profiles” first.</span>
+                    <span>No active profile selected. Choose one below (or create one in “Model Profiles”).</span>
                 </div>
             )}
 
@@ -102,6 +136,28 @@ export default function ProductPack() {
                 <Card className="lg:col-span-1">
                     <CardHeader title="Inputs" subtitle="SKU + images" />
                     <CardBody className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-slate-700">Model profile</label>
+                            <select
+                                value={activeProfile?.id || ""}
+                                onChange={(e) => selectProfileById(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                            >
+                                <option value="">-- Select a profile --</option>
+                                {profiles.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+                                <span>{profiles.length} profile(s)</span>
+                                <button type="button" className="hover:underline" onClick={loadProfiles} disabled={profilesLoading}>
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 gap-3">
                             <div className="space-y-1">
                                 <label className="text-sm font-medium text-slate-700">Product ID (SKU)</label>

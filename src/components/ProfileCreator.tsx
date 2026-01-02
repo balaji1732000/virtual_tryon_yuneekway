@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { Upload, CheckCircle } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
@@ -25,10 +25,17 @@ export default function ProfileCreator() {
     const [region, setRegion] = useState(activeProfile?.region || "Europe");
     const [background, setBackground] = useState(activeProfile?.background || "Studio Grey");
     const [image, setImage] = useState<string | null>(activeProfile?.referenceImage || null);
+    const [file, setFile] = useState<File | null>(null);
+    const [profiles, setProfiles] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const activeId = activeProfile?.id || null;
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImage(reader.result as string);
@@ -37,21 +44,80 @@ export default function ProfileCreator() {
         }
     };
 
-    const handleSave = () => {
-        if (!name || !image) {
-            alert("Please provide a name and a reference image.");
+    const loadProfiles = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/profiles");
+            const json = await res.json();
+            if (!res.ok) throw new Error(json?.error || "Failed to load profiles");
+            setProfiles(json.profiles || []);
+        } catch (e: any) {
+            setError(e?.message || "Failed to load profiles");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadProfiles();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleSelectProfile = (p: any) => {
+        setActiveProfile({
+            id: p.id,
+            name: p.name,
+            gender: p.gender,
+            skinTone: p.skinTone,
+            region: p.region,
+            background: p.background,
+            referenceImage: p.referenceImageUrl || undefined,
+        });
+        setName(p.name);
+        setGender(p.gender);
+        setSkinTone(p.skinTone);
+        setRegion(p.region);
+        setBackground(p.background);
+        setImage(p.referenceImageUrl || null);
+        setFile(null);
+    };
+
+    const handleCreateProfile = async () => {
+        if (!name || (!file && !image)) {
+            setError("Please provide a name and a reference image.");
             return;
         }
+        setLoading(true);
+        setError(null);
+        try {
+            const fd = new FormData();
+            fd.append("name", name);
+            fd.append("gender", gender);
+            fd.append("skinTone", skinTone);
+            fd.append("region", region);
+            fd.append("background", background);
+            if (file) {
+                fd.append("referenceImage", file);
+            } else if (image && image.startsWith("data:")) {
+                // Convert existing preview (data URL) into a file so we can persist to Supabase
+                const res = await fetch(image);
+                const blob = await res.blob();
+                fd.append("referenceImage", blob, "reference.jpg");
+            }
 
-        setActiveProfile({
-            id: activeProfile?.id || Math.random().toString(36).substr(2, 9),
-            name,
-            gender,
-            skinTone,
-            region,
-            background,
-            referenceImage: image,
-        });
+            const res = await fetch("/api/profiles", { method: "POST", body: fd });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json?.error || "Failed to create profile");
+
+            // Refresh list and set active to new profile
+            await loadProfiles();
+            if (json.profile) handleSelectProfile(json.profile);
+        } catch (e: any) {
+            setError(e?.message || "Failed to create profile");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -60,8 +126,46 @@ export default function ProfileCreator() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
-                    <CardHeader title="Profile details" subtitle="Name + styling context" />
+                    <CardHeader title="Profile details" subtitle="Name + styling context" right={
+                        <button
+                            type="button"
+                            onClick={loadProfiles}
+                            className="text-sm text-slate-700 hover:underline disabled:opacity-50"
+                            disabled={loading}
+                        >
+                            Refresh
+                        </button>
+                    } />
                     <CardBody className="space-y-4">
+                        {error && (
+                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-slate-700">Existing profiles</label>
+                            <select
+                                value={activeId || ""}
+                                onChange={(e) => {
+                                    const id = e.target.value;
+                                    const p = profiles.find((x) => x.id === id);
+                                    if (p) handleSelectProfile(p);
+                                }}
+                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                            >
+                                <option value="">-- Select a profile --</option>
+                                {profiles.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="text-xs text-slate-500 mt-1">
+                                Profiles are stored in Supabase and can be reused across sessions.
+                            </div>
+                        </div>
+
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-slate-700">Profile name</label>
                             <input
@@ -100,8 +204,12 @@ export default function ProfileCreator() {
                             </div>
                         </div>
 
-                        <button onClick={handleSave} className="w-full btn-primary flex items-center justify-center gap-2">
-                            <CheckCircle size={18} /> Save active profile
+                        <button
+                            onClick={handleCreateProfile}
+                            disabled={loading || (!file && !image)}
+                            className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <CheckCircle size={18} /> Save profile to workspace
                         </button>
                     </CardBody>
                 </Card>
