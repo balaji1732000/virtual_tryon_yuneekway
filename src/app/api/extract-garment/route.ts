@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { getGeminiClient } from "@/lib/gemini";
 
 function extractInlineImage(response: any): { b64: string; mimeType: string } | null {
@@ -12,13 +12,8 @@ function extractInlineImage(response: any): { b64: string; mimeType: string } | 
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    const { user, supabase } = await getSupabaseAuthedClient(req);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
