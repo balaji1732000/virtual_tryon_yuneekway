@@ -52,7 +52,7 @@ export default function VirtualTryOn() {
             const data = await response.json();
             if (data.error) throw new Error(data.error);
 
-            setResult(`data:${data.mimeType};base64,${data.image}`);
+            setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);
         } catch (err: any) {
             setError(err.message);
         } finally {

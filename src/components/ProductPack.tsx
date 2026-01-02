@@ -18,6 +18,7 @@ export default function ProductPack() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [results, setResults] = useState<{ angle: string; image: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
 
     const handleToggleAngle = (angle: string) => {
         setSelectedAngles(prev =>
@@ -38,11 +39,14 @@ export default function ProductPack() {
         setIsGenerating(true);
         setError(null);
         setResults([]);
+        const newJobId = (globalThis.crypto && "randomUUID" in globalThis.crypto) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
+        setJobId(newJobId);
 
         try {
             for (const angle of selectedAngles) {
                 const formData = new FormData();
                 formData.append('type', 'pack');
+                formData.append('jobId', newJobId);
                 formData.append('angle', angle);
                 formData.append('skinTone', activeProfile.skinTone);
                 formData.append('region', activeProfile.region);
@@ -69,7 +73,8 @@ export default function ProductPack() {
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
 
-                setResults(prev => [...prev, { angle, image: `data:${data.mimeType};base64,${data.image}` }]);
+                const img = data.signedUrl || `data:${data.mimeType};base64,${data.image}`;
+                setResults(prev => [...prev, { angle, image: img }]);
             }
         } catch (err: any) {
             setError(err.message);
