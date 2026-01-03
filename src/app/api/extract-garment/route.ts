@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { getGeminiClient } from "@/lib/gemini";
+import { normalizeToJpeg } from "@/lib/image-normalize";
 
 function extractInlineImage(response: any): { b64: string; mimeType: string } | null {
   const parts = response?.candidates?.[0]?.content?.parts ?? [];
@@ -21,7 +22,13 @@ export async function POST(req: NextRequest) {
     const image = formData.get("image") as File | null;
     if (!image) return NextResponse.json({ error: "Missing image" }, { status: 400 });
 
-    const imageB64 = Buffer.from(await image.arrayBuffer()).toString("base64");
+    let norm: Awaited<ReturnType<typeof normalizeToJpeg>>;
+    try {
+      norm = await normalizeToJpeg(image);
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || "Unable to process input image" }, { status: 400 });
+    }
+    const imageB64 = norm.buffer.toString("base64");
 
     const prompt = `
 You are an expert ecommerce photo editor.
@@ -46,7 +53,7 @@ Return ONLY the final cutout image.
           role: "user",
           parts: [
             { text: prompt },
-            { inlineData: { data: imageB64, mimeType: image.type || "image/jpeg" } },
+            { inlineData: { data: imageB64, mimeType: "image/jpeg" } },
           ],
         },
       ],
@@ -75,9 +82,11 @@ Return ONLY the final cutout image.
       return NextResponse.json({ error: signed.error.message }, { status: 500 });
     }
 
-    // Persist job + output metadata (best-effort)
+    // Persist job + output metadata (best-effort but usually should succeed)
+    let jobId: string | null = null;
+    let outputId: string | null = null;
     try {
-      const { data: job } = await supabase
+      const { data: job, error: jobErr } = await supabase
         .from("jobs")
         .insert({
           user_id: user.id,
@@ -87,20 +96,30 @@ Return ONLY the final cutout image.
         })
         .select("id")
         .single();
+      if (jobErr) throw jobErr;
+      jobId = job?.id || null;
 
-      if (job?.id) {
-        await supabase.from("job_outputs").insert({
-          job_id: job.id,
-          kind: "extraction",
-          mime_type: extracted.mimeType,
-          storage_path: objectPath,
-        });
+      if (jobId) {
+        const { data: out, error: outErr } = await supabase
+          .from("job_outputs")
+          .insert({
+            job_id: jobId as any,
+            kind: "extraction",
+            mime_type: extracted.mimeType,
+            storage_path: objectPath,
+          })
+          .select("id")
+          .single();
+        if (outErr) throw outErr;
+        outputId = out?.id || null;
       }
     } catch {
-      // ignore
+      // ignore job tracking failures
     }
 
     return NextResponse.json({
+      jobId,
+      outputId,
       storagePath: objectPath,
       mimeType: extracted.mimeType,
       signedUrl: signed.data.signedUrl,
