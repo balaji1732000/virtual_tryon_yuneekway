@@ -8,6 +8,7 @@ export default function ExtractGarment() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [resultPath, setResultPath] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +26,7 @@ export default function ExtractGarment() {
     setIsWorking(true);
     setError(null);
     setResultUrl(null);
+    setResultPath(null);
     try {
       const fd = new FormData();
       fd.append("image", file);
@@ -32,6 +34,7 @@ export default function ExtractGarment() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Extraction failed");
       setResultUrl(data.signedUrl);
+      setResultPath(data.storagePath || null);
     } catch (e: any) {
       setError(e?.message || "Extraction failed");
     } finally {
@@ -98,9 +101,19 @@ export default function ExtractGarment() {
             title="Result"
             subtitle="Transparent PNG"
             right={resultUrl ? (
-              <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={resultUrl} download>
-                <Download size={16} /> Download
-              </a>
+              <div className="flex items-center gap-3">
+                {resultPath && (
+                  <a
+                    className="text-sm text-slate-700 hover:underline"
+                    href={`/app/canvas?fromBucket=${encodeURIComponent("extractions")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Extract Garment")}`}
+                  >
+                    Edit in Magic Canvas
+                  </a>
+                )}
+                <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={resultUrl} download>
+                  <Download size={16} /> Download
+                </a>
+              </div>
             ) : null}
           />
           <CardBody>

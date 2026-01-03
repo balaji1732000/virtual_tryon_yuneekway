@@ -121,16 +121,21 @@ export default async function HistoryPage() {
                         <div className="text-xs font-medium truncate">{o.angle || o.kind}</div>
                         <div className="text-[11px] opacity-60 truncate">{o.mime_type || ""}</div>
                       </div>
-                      {o.signedUrl && (
-                        <a
-                          href={o.signedUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs hover:underline"
-                        >
-                          Download
-                        </a>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {o.signedUrl && (o.mime_type || "").startsWith("image/") && (
+                          <Link
+                            href={`/app/canvas?fromBucket=${encodeURIComponent((o as any).bucket)}&fromPath=${encodeURIComponent(o.storage_path)}&title=${encodeURIComponent(g.jobType)}`}
+                            className="text-xs hover:underline"
+                          >
+                            Edit
+                          </Link>
+                        )}
+                        {o.signedUrl && (
+                          <a href={o.signedUrl} target="_blank" rel="noreferrer" className="text-xs hover:underline">
+                            Download
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

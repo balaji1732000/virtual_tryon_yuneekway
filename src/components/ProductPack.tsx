@@ -17,7 +17,7 @@ export default function ProductPack() {
     const [selectedAngles, setSelectedAngles] = useState<string[]>(["Front", "Back"]);
     const [ratio, setRatio] = useState("1:1 (Square)");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [results, setResults] = useState<{ angle: string; image: string }[]>([]);
+    const [results, setResults] = useState<{ angle: string; image: string; storagePath?: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
     const [profiles, setProfiles] = useState<any[]>([]);
@@ -117,7 +117,7 @@ export default function ProductPack() {
                 if (data.error) throw new Error(data.error);
 
                 const img = data.signedUrl || `data:${data.mimeType};base64,${data.image}`;
-                setResults(prev => [...prev, { angle, image: img }]);
+                setResults(prev => [...prev, { angle, image: img, storagePath: data.storagePath }]);
             }
         } catch (err: any) {
             setError(err.message);
@@ -275,12 +275,24 @@ export default function ProductPack() {
                     <CardBody>
                         <div className="grid grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pr-1">
                             {results.map((res, i) => (
-                                <a key={i} href={res.image} target="_blank" rel="noreferrer" className="group block">
-                                    <div className="aspect-[3/4] rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                                        <img src={res.image} alt={res.angle} className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform" />
+                                <div key={i} className="group">
+                                    <a href={res.image} target="_blank" rel="noreferrer" className="block">
+                                        <div className="aspect-[3/4] rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                                            <img src={res.image} alt={res.angle} className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform" />
+                                        </div>
+                                    </a>
+                                    <div className="mt-1 flex items-center justify-between gap-2">
+                                        <div className="text-[11px] text-slate-600 truncate">{res.angle}</div>
+                                        {res.storagePath && (
+                                            <a
+                                                className="text-[11px] text-slate-700 hover:underline"
+                                                href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(res.storagePath)}&title=${encodeURIComponent("Product Pack")}`}
+                                            >
+                                                Edit
+                                            </a>
+                                        )}
                                     </div>
-                                    <div className="mt-1 text-[11px] text-slate-600 text-center">{res.angle}</div>
-                                </a>
+                                </div>
                             ))}
 
                             {isGenerating && results.length < selectedAngles.length && (

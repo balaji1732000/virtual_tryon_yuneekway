@@ -12,6 +12,7 @@ export default function VirtualTryOn() {
     const [additionalPrompt, setAdditionalPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
+    const [resultPath, setResultPath] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleImageUpload = (file: File, type: 'model' | 'dress') => {
@@ -37,6 +38,7 @@ export default function VirtualTryOn() {
         setIsGenerating(true);
         setError(null);
         setResult(null);
+        setResultPath(null);
 
         try {
             const formData = new FormData();
@@ -54,6 +56,7 @@ export default function VirtualTryOn() {
             if (data.error) throw new Error(data.error);
 
             setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);
+            setResultPath(data.storagePath || null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -159,11 +162,25 @@ export default function VirtualTryOn() {
             </div>
 
             <Card>
-                <CardHeader title="Result" subtitle="Generated try-on output" right={result ? (
-                    <a className="text-sm text-slate-700 hover:underline" href={result} download>
-                        <span className="inline-flex items-center gap-1"><Download size={16} /> Download</span>
-                    </a>
-                ) : null} />
+                <CardHeader
+                    title="Result"
+                    subtitle="Generated try-on output"
+                    right={result ? (
+                        <div className="flex items-center gap-3">
+                            {resultPath && (
+                                <a
+                                    className="text-sm text-slate-700 hover:underline"
+                                    href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Try-On")}`}
+                                >
+                                    Edit in Magic Canvas
+                                </a>
+                            )}
+                            <a className="text-sm text-slate-700 hover:underline" href={result} download>
+                                <span className="inline-flex items-center gap-1"><Download size={16} /> Download</span>
+                            </a>
+                        </div>
+                    ) : null}
+                />
                 <CardBody>
                     {result ? (
                         <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-50 border border-slate-200">

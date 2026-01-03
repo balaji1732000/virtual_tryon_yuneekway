@@ -68,6 +68,54 @@ export default function MagicCanvas() {
     loadThreads();
   }, []);
 
+  // Deep-link support:
+  // - /app/canvas?threadId=... loads existing thread
+  // - /app/canvas?fromBucket=...&fromPath=...&title=... creates a new thread from an existing stored output
+  useEffect(() => {
+    const run = async () => {
+      const sp = new URLSearchParams(window.location.search);
+      const tid = sp.get("threadId");
+      const fromBucket = sp.get("fromBucket");
+      const fromPath = sp.get("fromPath");
+      const title = sp.get("title");
+
+      if (tid) {
+        await loadThread(tid);
+        return;
+      }
+
+      if (fromBucket && fromPath) {
+        setIsBusy(true);
+        setError(null);
+        try {
+          const fd = new FormData();
+          fd.append("title", title || "Canvas edit");
+          fd.append("fromBucket", fromBucket);
+          fd.append("fromPath", fromPath);
+          const res = await fetch("/api/canvas/threads", { method: "POST", body: fd });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || "Failed to create thread");
+          await loadThreads();
+          await loadThread(json.thread.id);
+
+          // replace URL to keep it clean
+          const url = new URL(window.location.href);
+          url.searchParams.delete("fromBucket");
+          url.searchParams.delete("fromPath");
+          url.searchParams.delete("title");
+          url.searchParams.set("threadId", json.thread.id);
+          window.history.replaceState({}, "", url.toString());
+        } catch (e: any) {
+          setError(e?.message || "Failed to create thread");
+        } finally {
+          setIsBusy(false);
+        }
+      }
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length]);

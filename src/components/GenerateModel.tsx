@@ -22,6 +22,7 @@ export default function GenerateModel() {
     const [angle, setAngle] = useState("Front");
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
+    const [resultPath, setResultPath] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleImageUpload = (file: File) => {
@@ -42,6 +43,7 @@ export default function GenerateModel() {
         setIsGenerating(true);
         setError(null);
         setResult(null);
+        setResultPath(null);
 
         try {
             const formData = new FormData();
@@ -63,6 +65,7 @@ export default function GenerateModel() {
             if (data.error) throw new Error(data.error);
 
             setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);
+            setResultPath(data.storagePath || null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -161,9 +164,19 @@ export default function GenerateModel() {
                         title="Result"
                         subtitle="Generated model image"
                         right={result ? (
-                            <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={result} download>
-                                <Download size={16} /> Download
-                            </a>
+                            <div className="flex items-center gap-3">
+                                {resultPath && (
+                                    <a
+                                        className="text-sm text-slate-700 hover:underline"
+                                        href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Model Generator")}`}
+                                    >
+                                        Edit in Magic Canvas
+                                    </a>
+                                )}
+                                <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={result} download>
+                                    <Download size={16} /> Download
+                                </a>
+                            </div>
                         ) : null}
                     />
                     <CardBody>
