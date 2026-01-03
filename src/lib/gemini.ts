@@ -185,3 +185,67 @@ export const pollVideoOperation = async (operationId: string) => {
 
     return operation;
 };
+
+export async function editImageWithMask(args: {
+    baseImageB64: string;
+    baseMimeType: string;
+    prompt: string;
+    maskImageB64?: string | null;
+    maskMimeType?: string;
+    invert?: boolean;
+    feather?: number;
+}) {
+    const model = "gemini-2.5-flash-image-preview";
+
+    const invertText = args.invert
+        ? "INVERT MODE: The mask indicates PROTECTED region; edit everything else."
+        : "DEFAULT MODE: The mask indicates EDITABLE region; edit only inside it.";
+
+    const featherText = typeof args.feather === "number" && args.feather > 0
+        ? `Mask edges are feathered by ~${Math.round(args.feather)}px. Blend seamlessly at the boundary.`
+        : "Mask edges are crisp.";
+
+    const baseRules = `
+You are an expert photo retoucher and image editor.
+
+TASK: Edit the image according to the user's request.
+
+CONSTRAINTS:
+- Preserve identity, background, and lighting as much as possible.
+- Do not add text or watermarks.
+- Output a single PNG image.
+`;
+
+    const maskRules = args.maskImageB64
+        ? `
+MASKING:
+- A mask image is provided as the SECOND image.
+- White pixels = editable, black pixels = protected.
+- ${invertText}
+- ${featherText}
+- Keep all protected pixels unchanged (pixel-perfect if possible).
+`
+        : `
+MASKING:
+- No mask provided. Apply the edit to the whole image, while preserving identity/background.
+`;
+
+    const fullPrompt = `${baseRules}\n${maskRules}\nUSER REQUEST:\n${args.prompt}\n`;
+
+    const parts: any[] = [
+        { text: fullPrompt },
+        { inlineData: { data: args.baseImageB64, mimeType: args.baseMimeType || "image/png" } },
+    ];
+
+    if (args.maskImageB64) {
+        parts.push({ inlineData: { data: args.maskImageB64, mimeType: args.maskMimeType || "image/png" } });
+    }
+
+    const response = await client.models.generateContent({
+        model,
+        contents: [{ role: "user", parts }],
+        config: { responseModalities: ["IMAGE", "TEXT"], temperature: 0.1 },
+    });
+
+    return response;
+}
