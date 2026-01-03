@@ -279,7 +279,7 @@ export default function MagicCanvas() {
   const canvasHeight = 768;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-stretch">
       <div className="space-y-6">
         <Card>
           <CardHeader title="Magic Canvas" subtitle="Upload an image, paint where to edit, and refine using chat." />
@@ -408,7 +408,8 @@ export default function MagicCanvas() {
         </Card>
       </div>
 
-      <Card className="h-[calc(100vh-220px)] flex flex-col">
+      {/* Chat should stretch and only the message list should scroll (avoid clipped composer). */}
+      <Card className="min-h-[520px] lg:min-h-[calc(100vh-300px)] flex flex-col">
         <CardHeader
           title="Chat"
           subtitle="Describe what you want to change. The selected image is used as context."
@@ -420,9 +421,9 @@ export default function MagicCanvas() {
             ) : null
           }
         />
-        <CardBody className="flex-1 flex flex-col gap-3">
+        <CardBody className="flex-1 min-h-0 flex flex-col gap-3">
           {threadId && conversations.length > 0 && (
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 shrink-0">
               <select
                 value={activeConversationId}
                 onChange={(e) => {
@@ -446,7 +447,7 @@ export default function MagicCanvas() {
             </div>
           )}
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-2">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-2">
             {messages.length === 0 ? (
               <div className="text-sm opacity-60">No messages yet. Create a thread and send your first edit request.</div>
             ) : (
@@ -485,7 +486,7 @@ export default function MagicCanvas() {
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 shrink-0">
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
