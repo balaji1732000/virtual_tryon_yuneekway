@@ -48,6 +48,7 @@ type Message = {
 export default function MagicCanvas() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadId, setThreadId] = useState<string>("");
+  const [loadedThreadTitle, setLoadedThreadTitle] = useState<string>("");
   const [threadTitle, setThreadTitle] = useState<string>("Untitled");
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -86,6 +87,7 @@ export default function MagicCanvas() {
     }
     setThreadId(json.thread.id);
     setThreadTitle(json.thread.title);
+    setLoadedThreadTitle(json.thread.title);
     setBaseUrl(json.thread.baseUrl);
     setAssets(json.assets || []);
     setConversations(json.conversations || []);
@@ -191,6 +193,35 @@ export default function MagicCanvas() {
     }
   };
 
+  const renameThread = async () => {
+    if (!threadId) return;
+    const next = threadTitle.trim();
+    if (!next) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/canvas/threads/${threadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: next }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Rename failed");
+      setLoadedThreadTitle(json.thread.title);
+      await loadThreads();
+    } catch (e: any) {
+      setError(e?.message || "Rename failed");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const formatThreadOption = (t: Thread) => {
+    const dt = t.updated_at ? new Date(t.updated_at) : new Date();
+    const when = dt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(",", "");
+    return `${t.title} • ${when}`;
+  };
+
   const selectAsset = (id: string) => {
     setActiveAssetId(id);
     const a = assets.find((x) => x.id === id);
@@ -290,7 +321,7 @@ export default function MagicCanvas() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-sm font-medium opacity-70">Thread</label>
+                <label className="text-sm font-medium opacity-70">Creation</label>
                 <select
                   value={threadId}
                   onChange={(e) => (e.target.value ? loadThread(e.target.value) : null)}
@@ -299,7 +330,7 @@ export default function MagicCanvas() {
                   <option value="">-- New thread --</option>
                   {threads.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.title}
+                      {formatThreadOption(t)}
                     </option>
                   ))}
                 </select>
@@ -307,7 +338,14 @@ export default function MagicCanvas() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium opacity-70">Title</label>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-sm font-medium opacity-70">Name</label>
+                  {threadId && threadTitle.trim() && threadTitle.trim() !== loadedThreadTitle && (
+                    <button type="button" className="text-xs hover:underline disabled:opacity-50" onClick={renameThread} disabled={isBusy}>
+                      Save
+                    </button>
+                  )}
+                </div>
                 <input
                   value={threadTitle}
                   onChange={(e) => setThreadTitle(e.target.value)}

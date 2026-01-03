@@ -115,22 +115,31 @@ export const generateVirtualTryOn = async (
     const model = "gemini-2.5-flash-image-preview";
 
     const prompt = `
-    Please generate a virtual try-on result.
+Please generate a virtual try-on result.
 
-    Model image: [model_image]
-    Dress image: [dress_image]
+Model image: [model_image]
+Dress image: [dress_image]
 
-    Instructions:
-    1. Remove the model's original clothing, shawl/dupatta, jewelry, and accessories completely.
-    2. Use only the uploaded dress image as the clothing. Do not mix features of the original outfit.
-    3. Preserve the exact fabric color, texture, embroidery, and design of the dress without fading or distortion.
-    4. Ensure the output image is sharp, photo-realistic, and high-resolution with clear details.
-    5. Fit the dress naturally to the model's body shape and pose, with realistic folds, shadows, and lighting.
-    6. Maintain the model's original face, skin tone, hair, and background unchanged.
-    7. Do not add any new accessories, patterns, or artifacts.
-    8. Output only one final high-quality, sharp image of the model wearing the uploaded dress.
-    
-    Additional instructions: ${additionalPrompt}
+PRIMARY TASK:
+- Put the uploaded dress on the same person from the model image (keep identity).
+
+GARMENT RULES:
+1. Remove the model's original clothing, shawl/dupatta, jewelry, and accessories completely.
+2. Use ONLY the uploaded dress image as the clothing. Do not mix features of the original outfit.
+3. Preserve the exact fabric color, texture, embroidery, and design of the dress without fading or distortion.
+4. Fit the dress naturally to the body with realistic folds, shadows, and lighting.
+
+COMPOSITION / POSE / FRAMING (IMPORTANT):
+- Follow the user's request below for camera framing and pose (e.g. \"full body\", \"zoom out\", \"center the subject\", \"straight pose\").
+- If the request needs more canvas/background, extend the background in a consistent way (same style/lighting) rather than changing it.
+
+QUALITY + SAFETY:
+- Keep face, skin tone, and hair consistent with the original person.
+- Do not add text or watermarks.
+- Output one sharp photorealistic image.
+
+USER REQUEST:
+${additionalPrompt}
   `;
 
     const response = await client.models.generateContent({

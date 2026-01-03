@@ -91,6 +91,8 @@ export default function ProductPack() {
                 formData.append('type', 'pack');
                 formData.append('jobId', newJobId);
                 formData.append('angle', angle);
+                formData.append('productId', productId);
+                if (title) formData.append('productTitle', title);
                 formData.append('skinTone', activeProfile.skinTone);
                 formData.append('region', activeProfile.region);
                 formData.append('background', activeProfile.background);

@@ -82,5 +82,30 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   });
 }
 
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { user, supabase } = await getSupabaseAuthedClient(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await ctx.params;
+  const body = await req.json().catch(() => null);
+  const title = String(body?.title || "").trim();
+  if (!title) return NextResponse.json({ error: "Missing title" }, { status: 400 });
+  if (title.length > 96) return NextResponse.json({ error: "Title too long" }, { status: 400 });
+
+  const { data: thread, error: threadErr } = await supabase.from("canvas_threads").select("id,user_id").eq("id", id).single();
+  if (threadErr || !thread) return NextResponse.json({ error: threadErr?.message || "Not found" }, { status: 404 });
+  if ((thread as any).user_id !== user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: updated, error } = await supabase
+    .from("canvas_threads")
+    .update({ title })
+    .eq("id", id)
+    .select("id,title,updated_at")
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ thread: updated });
+}
+
 
 

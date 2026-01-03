@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
+import { buildCreationTitle } from "@/lib/creation-title";
 
 function bucketForKind(kind: string) {
   if (kind === "extraction") return "extractions";
@@ -27,7 +28,11 @@ export async function POST(req: NextRequest) {
   }
 
   // Validate ownership via jobs table (job_outputs has no user_id)
-  const { data: job, error: jobErr } = await supabase.from("jobs").select("id,user_id,type").eq("id", jobId).single();
+  const { data: job, error: jobErr } = await supabase
+    .from("jobs")
+    .select("id,user_id,type,input_json,created_at")
+    .eq("id", jobId)
+    .single();
   if (jobErr || !job || job.user_id !== user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -50,9 +55,10 @@ export async function POST(req: NextRequest) {
 
   // Find or create one thread per job
   let threadId: string | null = null;
+  let threadTitle: string | null = null;
   const existingThread = await supabase
     .from("canvas_threads")
-    .select("id")
+    .select("id,title")
     .eq("source_job_id", jobId)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -60,9 +66,15 @@ export async function POST(req: NextRequest) {
 
   if (existingThread.data?.id) {
     threadId = existingThread.data.id;
+    threadTitle = existingThread.data.title || null;
   } else {
     const newThreadId = randomUUID();
-    const title = niceType(job.type);
+    const title = buildCreationTitle({
+      jobType: job.type,
+      inputJson: job.input_json,
+      angles: [output.angle],
+      createdAt: job.created_at,
+    });
     const ins = await supabase
       .from("canvas_threads")
       .insert({
@@ -77,6 +89,7 @@ export async function POST(req: NextRequest) {
       .single();
     if (ins.error) return NextResponse.json({ error: ins.error.message }, { status: 500 });
     threadId = ins.data.id;
+    threadTitle = title;
   }
 
   // Ensure every image output from this job becomes an asset in this thread (so a creation shows Front/Back/etc).
@@ -111,6 +124,21 @@ export async function POST(req: NextRequest) {
       current_storage_bucket: bkt,
       current_storage_path: o.storage_path,
     });
+  }
+
+  // Best-effort: upgrade generic/duplicate-looking titles using SKU + angles.
+  try {
+    const angles = (jobOutputs || []).map((o: any) => o.angle);
+    const desired = buildCreationTitle({ jobType: job.type, inputJson: job.input_json, angles, createdAt: job.created_at });
+    const looksGeneric =
+      !threadTitle ||
+      threadTitle === niceType(job.type) ||
+      ["Job", "Canvas Edit"].includes(threadTitle);
+    if (looksGeneric && desired && desired !== threadTitle) {
+      await supabase.from("canvas_threads").update({ title: desired }).eq("id", threadId);
+    }
+  } catch {
+    // ignore
   }
 
   // Find or create asset for this output

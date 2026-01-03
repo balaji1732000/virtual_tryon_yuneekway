@@ -114,6 +114,8 @@ export async function POST(req: NextRequest) {
       const dressImage = formData.get("dressImage") as File | null;
       const referenceImage = formData.get("referenceImage") as File | null;
       const angle = (formData.get("angle") as string) || "";
+      const productId = (formData.get("productId") as string) || "";
+      const productTitle = (formData.get("productTitle") as string) || "";
       const skinTone = (formData.get("skinTone") as string) || "";
       const region = (formData.get("region") as string) || "";
       const background = (formData.get("background") as string) || "";
@@ -163,7 +165,7 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             type: "product_pack",
             status: "running",
-            input_json: { skinTone, region, background, gender, aspectRatio, additionalPrompt },
+            input_json: { productId, productTitle, skinTone, region, background, gender, aspectRatio, additionalPrompt },
           },
           { onConflict: "id" }
         );

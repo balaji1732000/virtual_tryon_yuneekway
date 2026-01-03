@@ -135,7 +135,7 @@ export default function VirtualTryOn() {
                             <textarea
                                 value={additionalPrompt}
                                 onChange={e => setAdditionalPrompt(e.target.value)}
-                                placeholder="e.g., keep background, tighter fit, studio lighting…"
+                                placeholder='Examples: "full body", "zoom out", "center subject", "straight pose", "keep background", "studio lighting"...'
                                 className="w-full input-field text-sm"
                                 rows={4}
                             />

@@ -7,14 +7,27 @@ export async function GET(req: NextRequest) {
   const { user, supabase } = await getSupabaseAuthedClient(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Pull a larger window and de-dupe by source_job_id so users see one Creation per job.
   const { data, error } = await supabase
     .from("canvas_threads")
     .select("id,title,base_storage_bucket,base_storage_path,created_at,updated_at,source_job_id")
     .order("updated_at", { ascending: false })
-    .limit(25);
+    .limit(200);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ threads: data || [] });
+
+  const out: any[] = [];
+  const seenJobs = new Set<string>();
+  for (const t of data || []) {
+    const sj = (t as any).source_job_id as string | null;
+    if (sj) {
+      if (seenJobs.has(sj)) continue;
+      seenJobs.add(sj);
+    }
+    out.push(t);
+    if (out.length >= 25) break;
+  }
+  return NextResponse.json({ threads: out });
 }
 
 // POST: create thread from uploaded image (MVP) OR from existing storage path (optional)
