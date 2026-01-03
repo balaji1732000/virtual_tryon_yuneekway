@@ -33,24 +33,78 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const mask = formData.get("mask") as File | null;
   const invert = String(formData.get("invert") || "false") === "true";
   const feather = Number(formData.get("feather") || 0);
+  const conversationId = String(formData.get("conversationId") || "").trim() || null;
+  const assetId = String(formData.get("assetId") || "").trim() || null;
+  const baseOverrideBucket = String(formData.get("baseOverrideBucket") || "").trim() || null;
+  const baseOverridePath = String(formData.get("baseOverridePath") || "").trim() || null;
 
   if (!text) return NextResponse.json({ error: "Missing text" }, { status: 400 });
+  if (!conversationId || !assetId) return NextResponse.json({ error: "Missing conversationId/assetId" }, { status: 400 });
 
-  // Determine latest image to use as context: last assistant output, else thread base
+  // Validate conversation + asset belong to thread
+  const { data: conv, error: convErr } = await supabase
+    .from("canvas_conversations")
+    .select("id,thread_id")
+    .eq("id", conversationId)
+    .single();
+  if (convErr || !conv || conv.thread_id !== threadId) return NextResponse.json({ error: "Invalid conversation" }, { status: 400 });
+
+  const { data: asset, error: assetErr } = await supabase
+    .from("canvas_assets")
+    .select("id,thread_id,current_storage_bucket,current_storage_path,base_storage_bucket,base_storage_path")
+    .eq("id", assetId)
+    .single();
+  if (assetErr || !asset || asset.thread_id !== threadId) return NextResponse.json({ error: "Invalid asset" }, { status: 400 });
+
+  // Optional override: allow editing a previous version (must belong to this asset)
+  let overrideBucket: string | null = null;
+  let overridePath: string | null = null;
+  if (baseOverrideBucket && baseOverridePath) {
+    const okDirect =
+      (baseOverrideBucket === asset.current_storage_bucket && baseOverridePath === asset.current_storage_path) ||
+      (baseOverrideBucket === asset.base_storage_bucket && baseOverridePath === asset.base_storage_path);
+    if (okDirect) {
+      overrideBucket = baseOverrideBucket;
+      overridePath = baseOverridePath;
+    } else {
+      const { data: existing } = await supabase
+        .from("canvas_messages")
+        .select("id")
+        .eq("thread_id", threadId)
+        .eq("asset_id", assetId)
+        .eq("output_storage_bucket", baseOverrideBucket)
+        .eq("output_storage_path", baseOverridePath)
+        .limit(1)
+        .maybeSingle();
+      if (existing?.id) {
+        overrideBucket = baseOverrideBucket;
+        overridePath = baseOverridePath;
+      }
+    }
+  }
+
+  // Determine latest image to use as context:
+  // - base override (if provided & valid)
+  // - last assistant output for this asset+conversation
+  // - else asset current, else thread base
   const { data: lastMsg } = await supabase
     .from("canvas_messages")
     .select("output_storage_bucket,output_storage_path")
     .eq("thread_id", threadId)
     .eq("role", "assistant")
+    .eq("conversation_id", conversationId)
+    .eq("asset_id", assetId)
     .not("output_storage_path", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  const latestBucket = lastMsg?.output_storage_bucket || thread.base_storage_bucket;
-  const latestPath = lastMsg?.output_storage_path || thread.base_storage_path;
+  const latestBucket =
+    overrideBucket || lastMsg?.output_storage_bucket || asset.current_storage_bucket || asset.base_storage_bucket || thread.base_storage_bucket;
+  const latestPath = lastMsg?.output_storage_path || asset.current_storage_path || asset.base_storage_path || thread.base_storage_path;
+  const latestPathFinal = overridePath || latestPath;
 
-  const { data: latestDownload, error: dlErr } = await supabase.storage.from(latestBucket).download(latestPath);
+  const { data: latestDownload, error: dlErr } = await supabase.storage.from(latestBucket).download(latestPathFinal);
   if (dlErr || !latestDownload) return NextResponse.json({ error: dlErr?.message || "Failed to read base image" }, { status: 500 });
   const latestBuf = Buffer.from(await latestDownload.arrayBuffer());
   const latestB64 = latestBuf.toString("base64");
@@ -63,6 +117,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       user_id: user.id,
       role: "user",
       text,
+      conversation_id: conversationId as any,
+      asset_id: assetId as any,
     })
     .select("id")
     .single();
@@ -75,7 +131,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   if (mask) {
     maskBucket = "outputs";
-    maskPath = `${user.id}/canvas/${threadId}/masks/${userMsg.id}.png`;
+    maskPath = `${user.id}/canvas/${threadId}/assets/${assetId}/masks/${userMsg.id}.png`;
     const maskBuf = Buffer.from(await mask.arrayBuffer());
     const upMask = await supabase.storage.from(maskBucket).upload(maskPath, maskBuf, {
       contentType: "image/png",
@@ -103,7 +159,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const outBuf = Buffer.from(extracted.b64, "base64");
   const outBucket = "outputs";
-  const outPath = `${user.id}/canvas/${threadId}/versions/${userMsg.id}.png`;
+  const outPath = `${user.id}/canvas/${threadId}/assets/${assetId}/versions/${userMsg.id}.png`;
 
   const upOut = await supabase.storage.from(outBucket).upload(outPath, outBuf, {
     contentType: extracted.mimeType,
@@ -120,7 +176,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       user_id: user.id,
       type: "canvas_edit",
       status: "done",
-      input_json: { threadId, prompt: text, invert, feather, hasMask: !!maskB64, source: { bucket: latestBucket, path: latestPath } },
+      input_json: { threadId, prompt: text, invert, feather, hasMask: !!maskB64, source: { bucket: latestBucket, path: latestPathFinal } },
     })
     .select("id")
     .single();
@@ -132,6 +188,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     storage_path: outPath,
   });
 
+  // Update asset current pointer
+  await supabase
+    .from("canvas_assets")
+    .update({ current_storage_bucket: outBucket, current_storage_path: outPath })
+    .eq("id", assetId);
+
   // Insert assistant message pointing to output
   await supabase.from("canvas_messages").insert({
     thread_id: threadId,
@@ -141,6 +203,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     output_job_id: jobId as any,
     output_storage_bucket: outBucket,
     output_storage_path: outPath,
+    conversation_id: conversationId as any,
+    asset_id: assetId as any,
   });
 
   // Touch thread updated_at
@@ -149,6 +213,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const signed = await supabase.storage.from(outBucket).createSignedUrl(outPath, 60 * 60 * 24);
   return NextResponse.json({
     jobId,
+    conversationId,
+    assetId,
     output: { bucket: outBucket, path: outPath, signedUrl: signed.data?.signedUrl || null },
     mask: maskPath ? { bucket: maskBucket, path: maskPath } : null,
   });

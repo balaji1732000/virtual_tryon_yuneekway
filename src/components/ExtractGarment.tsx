@@ -9,6 +9,8 @@ export default function ExtractGarment() {
   const [preview, setPreview] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [resultPath, setResultPath] = useState<string | null>(null);
+  const [resultJobId, setResultJobId] = useState<string | null>(null);
+  const [resultOutputId, setResultOutputId] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +29,8 @@ export default function ExtractGarment() {
     setError(null);
     setResultUrl(null);
     setResultPath(null);
+    setResultJobId(null);
+    setResultOutputId(null);
     try {
       const fd = new FormData();
       fd.append("image", file);
@@ -35,6 +39,8 @@ export default function ExtractGarment() {
       if (!res.ok) throw new Error(data?.error || "Extraction failed");
       setResultUrl(data.signedUrl);
       setResultPath(data.storagePath || null);
+      setResultJobId(data.jobId || null);
+      setResultOutputId(data.outputId || null);
     } catch (e: any) {
       setError(e?.message || "Extraction failed");
     } finally {
@@ -102,10 +108,10 @@ export default function ExtractGarment() {
             subtitle="Transparent PNG"
             right={resultUrl ? (
               <div className="flex items-center gap-3">
-                {resultPath && (
+                {resultJobId && resultOutputId && (
                   <a
                     className="text-sm text-[color:var(--sp-text)] hover:underline"
-                    href={`/app/canvas?fromBucket=${encodeURIComponent("extractions")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Extract Garment")}`}
+                    href={`/app/canvas?jobId=${encodeURIComponent(resultJobId)}&outputId=${encodeURIComponent(resultOutputId)}`}
                   >
                     Edit in Magic Canvas
                   </a>

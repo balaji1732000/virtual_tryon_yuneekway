@@ -9,6 +9,25 @@ type Thread = {
   title: string;
   base_storage_bucket: string;
   base_storage_path: string;
+  source_job_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type Asset = {
+  id: string;
+  label: string | null;
+  base_storage_bucket: string;
+  base_storage_path: string;
+  current_storage_bucket: string;
+  current_storage_path: string;
+  baseUrl?: string | null;
+  currentUrl?: string | null;
+};
+
+type Conversation = {
+  id: string;
+  title: string;
   created_at: string;
   updated_at: string;
 };
@@ -17,6 +36,10 @@ type Message = {
   id: string;
   role: "user" | "assistant";
   text: string | null;
+  conversation_id?: string | null;
+  asset_id?: string | null;
+  output_storage_bucket?: string | null;
+  output_storage_path?: string | null;
   maskUrl?: string | null;
   outputUrl?: string | null;
   created_at: string;
@@ -27,8 +50,13 @@ export default function MagicCanvas() {
   const [threadId, setThreadId] = useState<string>("");
   const [threadTitle, setThreadTitle] = useState<string>("Untitled");
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string>("");
+  const [activeAssetId, setActiveAssetId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [baseOverride, setBaseOverride] = useState<{ bucket: string; path: string; signedUrl: string } | null>(null);
 
   const [upload, setUpload] = useState<File | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -46,9 +74,11 @@ export default function MagicCanvas() {
     if (res.ok) setThreads(json.threads || []);
   };
 
-  const loadThread = async (id: string) => {
+  const loadThread = async (id: string, opts?: { conversationId?: string; preferredAssetId?: string }) => {
     setError(null);
-    const res = await fetch(`/api/canvas/threads/${id}`);
+    const qs = new URLSearchParams();
+    if (opts?.conversationId) qs.set("conversationId", opts.conversationId);
+    const res = await fetch(`/api/canvas/threads/${id}${qs.toString() ? `?${qs.toString()}` : ""}`);
     const json = await res.json();
     if (!res.ok) {
       setError(json?.error || "Failed to load thread");
@@ -57,11 +87,20 @@ export default function MagicCanvas() {
     setThreadId(json.thread.id);
     setThreadTitle(json.thread.title);
     setBaseUrl(json.thread.baseUrl);
+    setAssets(json.assets || []);
+    setConversations(json.conversations || []);
+    setActiveConversationId(json.activeConversationId || "");
     setMessages(json.messages || []);
 
-    // current image = last assistant output else base
-    const lastOut = (json.messages || []).slice().reverse().find((m: any) => m.outputUrl)?.outputUrl || null;
-    setCurrentImageUrl(lastOut || json.thread.baseUrl || null);
+    const preferredAssetId = opts?.preferredAssetId || "";
+    const firstAssetId = (json.assets?.[0]?.id as string | undefined) || "";
+    const nextAssetId =
+      (preferredAssetId && json.assets?.some((a: any) => a.id === preferredAssetId) ? preferredAssetId : "") || activeAssetId || firstAssetId;
+    setActiveAssetId(nextAssetId);
+
+    const asset = (json.assets || []).find((a: any) => a.id === nextAssetId) || null;
+    setCurrentImageUrl(asset?.currentUrl || asset?.baseUrl || json.thread.baseUrl || null);
+    setBaseOverride(null);
   };
 
   useEffect(() => {
@@ -69,47 +108,50 @@ export default function MagicCanvas() {
   }, []);
 
   // Deep-link support:
-  // - /app/canvas?threadId=... loads existing thread
-  // - /app/canvas?fromBucket=...&fromPath=...&title=... creates a new thread from an existing stored output
+  // - /app/canvas?jobId=...&outputId=... resolves to a single creation thread + asset + conversation
+  // - /app/canvas?threadId=...&assetId=...&conversationId=... opens directly
   useEffect(() => {
     const run = async () => {
       const sp = new URLSearchParams(window.location.search);
+      const jobId = sp.get("jobId");
+      const outputId = sp.get("outputId");
       const tid = sp.get("threadId");
-      const fromBucket = sp.get("fromBucket");
-      const fromPath = sp.get("fromPath");
-      const title = sp.get("title");
+      const preferredAssetId = sp.get("assetId");
+      const preferredConversationId = sp.get("conversationId");
 
-      if (tid) {
-        await loadThread(tid);
-        return;
-      }
-
-      if (fromBucket && fromPath) {
+      if (jobId && outputId) {
         setIsBusy(true);
         setError(null);
         try {
-          const fd = new FormData();
-          fd.append("title", title || "Canvas edit");
-          fd.append("fromBucket", fromBucket);
-          fd.append("fromPath", fromPath);
-          const res = await fetch("/api/canvas/threads", { method: "POST", body: fd });
+          const res = await fetch("/api/canvas/resolve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobId, outputId }),
+          });
           const json = await res.json();
-          if (!res.ok) throw new Error(json?.error || "Failed to create thread");
-          await loadThreads();
-          await loadThread(json.thread.id);
+          if (!res.ok) throw new Error(json?.error || "Resolve failed");
 
-          // replace URL to keep it clean
           const url = new URL(window.location.href);
-          url.searchParams.delete("fromBucket");
-          url.searchParams.delete("fromPath");
-          url.searchParams.delete("title");
-          url.searchParams.set("threadId", json.thread.id);
+          url.searchParams.delete("jobId");
+          url.searchParams.delete("outputId");
+          url.searchParams.set("threadId", json.threadId);
+          url.searchParams.set("assetId", json.assetId);
+          url.searchParams.set("conversationId", json.conversationId);
           window.history.replaceState({}, "", url.toString());
+
+          await loadThreads();
+          await loadThread(json.threadId, { conversationId: json.conversationId, preferredAssetId: json.assetId });
         } catch (e: any) {
           setError(e?.message || "Failed to create thread");
         } finally {
           setIsBusy(false);
         }
+        return;
+      }
+
+      if (tid) {
+        await loadThread(tid, { conversationId: preferredConversationId || undefined, preferredAssetId: preferredAssetId || undefined });
+        return;
       }
     };
     run();
@@ -135,7 +177,13 @@ export default function MagicCanvas() {
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to create thread");
       await loadThreads();
-      await loadThread(json.thread.id);
+      await loadThread(json.thread.id, { conversationId: json.conversationId, preferredAssetId: json.assetId });
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("threadId", json.thread.id);
+      if (json.assetId) url.searchParams.set("assetId", json.assetId);
+      if (json.conversationId) url.searchParams.set("conversationId", json.conversationId);
+      window.history.replaceState({}, "", url.toString());
     } catch (e: any) {
       setError(e?.message || "Failed to create thread");
     } finally {
@@ -143,9 +191,34 @@ export default function MagicCanvas() {
     }
   };
 
+  const selectAsset = (id: string) => {
+    setActiveAssetId(id);
+    const a = assets.find((x) => x.id === id);
+    setCurrentImageUrl(a?.currentUrl || a?.baseUrl || baseUrl);
+    setBaseOverride(null);
+  };
+
+  const versionsForActiveAsset = useMemo(() => {
+    const out = (messages || [])
+      .filter((m) => m.role === "assistant" && m.asset_id === activeAssetId && m.outputUrl && m.output_storage_bucket && m.output_storage_path)
+      .map((m) => ({
+        id: m.id,
+        signedUrl: m.outputUrl as string,
+        bucket: m.output_storage_bucket as string,
+        path: m.output_storage_path as string,
+        created_at: m.created_at,
+      }));
+    // latest first
+    return out.slice().reverse();
+  }, [messages, activeAssetId]);
+
   const sendMessage = async () => {
     if (!threadId) {
       setError("Create/select a thread first.");
+      return;
+    }
+    if (!activeConversationId || !activeAssetId) {
+      setError("Select an image (asset) first.");
       return;
     }
     if (!prompt.trim()) return;
@@ -156,6 +229,12 @@ export default function MagicCanvas() {
       fd.append("text", prompt.trim());
       fd.append("invert", String(maskMeta.invert));
       fd.append("feather", String(maskMeta.feather));
+      fd.append("conversationId", activeConversationId);
+      fd.append("assetId", activeAssetId);
+      if (baseOverride) {
+        fd.append("baseOverrideBucket", baseOverride.bucket);
+        fd.append("baseOverridePath", baseOverride.path);
+      }
       if (maskBlob) fd.append("mask", maskBlob, "mask.png");
 
       const res = await fetch(`/api/canvas/threads/${threadId}/messages`, { method: "POST", body: fd });
@@ -163,10 +242,34 @@ export default function MagicCanvas() {
       if (!res.ok) throw new Error(json?.error || "Edit failed");
 
       setPrompt("");
-      await loadThread(threadId);
+      await loadThread(threadId, { conversationId: activeConversationId, preferredAssetId: activeAssetId });
       await loadThreads();
+      setBaseOverride(null);
     } catch (e: any) {
       setError(e?.message || "Edit failed");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const createNewChat = async () => {
+    if (!threadId) return;
+    setIsBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/canvas/threads/${threadId}/conversations`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to create chat");
+
+      const cid = json.conversation?.id as string;
+      setActiveConversationId(cid);
+      await loadThread(threadId, { conversationId: cid, preferredAssetId: activeAssetId });
+
+      const url = new URL(window.location.href);
+      url.searchParams.set("conversationId", cid);
+      window.history.replaceState({}, "", url.toString());
+    } catch (e: any) {
+      setError(e?.message || "Failed to create chat");
     } finally {
       setIsBusy(false);
     }
@@ -231,6 +334,31 @@ export default function MagicCanvas() {
                 </button>
               </div>
             </div>
+
+            {threadId && assets.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs opacity-70">Images in this creation</div>
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {assets.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => selectAsset(a.id)}
+                      className={`flex-shrink-0 w-[120px] rounded-xl border overflow-hidden text-left ${
+                        a.id === activeAssetId ? "border-[color:var(--sp-primary)]" : "border-[color:var(--sp-border)]"
+                      }`}
+                      title={a.label || "image"}
+                    >
+                      <div className="aspect-[3/2] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {a.currentUrl ? <img src={a.currentUrl} alt={a.label || "image"} className="w-full h-full object-cover" /> : null}
+                      </div>
+                      <div className="px-2 py-1 text-[11px] truncate text-[color:var(--sp-muted)]">{a.label || "Image"}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardBody>
         </Card>
 
@@ -246,13 +374,78 @@ export default function MagicCanvas() {
                 setMaskMeta(meta);
               }}
             />
+
+            {threadId && activeAssetId && versionsForActiveAsset.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <div className="text-xs opacity-70">Versions (tap to edit a previous version)</div>
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {versionsForActiveAsset.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => {
+                        setCurrentImageUrl(v.signedUrl);
+                        setBaseOverride({ bucket: v.bucket, path: v.path, signedUrl: v.signedUrl });
+                      }}
+                      className={`flex-shrink-0 w-[140px] rounded-xl border overflow-hidden text-left ${
+                        baseOverride?.path === v.path ? "border-[color:var(--sp-primary)]" : "border-[color:var(--sp-border)]"
+                      }`}
+                      title={new Date(v.created_at).toLocaleString()}
+                    >
+                      <div className="aspect-[3/2] bg-[color:var(--sp-hover)] overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={v.signedUrl} alt="version" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="px-2 py-1 text-[11px] truncate text-[color:var(--sp-muted)]">
+                        {new Date(v.created_at).toLocaleTimeString()}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
 
       <Card className="h-[calc(100vh-220px)] flex flex-col">
-        <CardHeader title="Chat" subtitle="Describe what you want to change. The latest image is used as context." />
+        <CardHeader
+          title="Chat"
+          subtitle="Describe what you want to change. The selected image is used as context."
+          right={
+            threadId ? (
+              <button type="button" className="text-sm hover:underline disabled:opacity-50" onClick={createNewChat} disabled={isBusy}>
+                New chat
+              </button>
+            ) : null
+          }
+        />
         <CardBody className="flex-1 flex flex-col gap-3">
+          {threadId && conversations.length > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <select
+                value={activeConversationId}
+                onChange={(e) => {
+                  const cid = e.target.value;
+                  setActiveConversationId(cid);
+                  loadThread(threadId, { conversationId: cid, preferredAssetId: activeAssetId });
+
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("conversationId", cid);
+                  window.history.replaceState({}, "", url.toString());
+                }}
+                className="input-field text-sm"
+              >
+                {conversations.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+              <div className="text-xs opacity-60">Shared chat for this creation</div>
+            </div>
+          )}
+
           <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-2">
             {messages.length === 0 ? (
               <div className="text-sm opacity-60">No messages yet. Create a thread and send your first edit request.</div>
@@ -269,7 +462,22 @@ export default function MagicCanvas() {
                   {m.outputUrl && (
                     <div className="mt-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.outputUrl} alt="output" className="w-full rounded-xl border border-[color:var(--sp-border)]" />
+                        <img
+                          src={m.outputUrl}
+                          alt="output"
+                          className="w-full rounded-xl border border-[color:var(--sp-border)] cursor-pointer"
+                          onClick={() => {
+                            if (m.asset_id) selectAsset(m.asset_id);
+                            if (m.output_storage_bucket && m.output_storage_path) {
+                              setCurrentImageUrl(m.outputUrl || null);
+                              setBaseOverride({
+                                bucket: m.output_storage_bucket,
+                                path: m.output_storage_path,
+                                signedUrl: m.outputUrl || "",
+                              });
+                            }
+                          }}
+                        />
                     </div>
                   )}
                 </div>
@@ -288,13 +496,14 @@ export default function MagicCanvas() {
             <button
               type="button"
               onClick={sendMessage}
-              disabled={isBusy || !threadId || !prompt.trim()}
+              disabled={isBusy || !threadId || !activeConversationId || !activeAssetId || !prompt.trim()}
               className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isBusy ? "Processing..." : "Send edit"}
             </button>
             <div className="text-xs opacity-60">
               Mask: {maskMeta.invert ? "invert" : "inside-only"} • Feather: {Math.round(maskMeta.feather)}px
+              {baseOverride ? " • Base: selected version" : ""}
             </div>
           </div>
         </CardBody>

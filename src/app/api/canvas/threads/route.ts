@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("canvas_threads")
-    .select("id,title,base_storage_bucket,base_storage_path,created_at,updated_at")
+    .select("id,title,base_storage_bucket,base_storage_path,created_at,updated_at,source_job_id")
     .order("updated_at", { ascending: false })
     .limit(25);
 
@@ -63,7 +63,31 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ thread });
+
+  // Create first conversation + first asset so edits work immediately
+  const { data: conv, error: convErr } = await supabase
+    .from("canvas_conversations")
+    .insert({ thread_id: threadId as any, user_id: user.id, title: "Chat 1" })
+    .select("id")
+    .single();
+  if (convErr) return NextResponse.json({ error: convErr.message }, { status: 500 });
+
+  const { data: asset, error: assetErr } = await supabase
+    .from("canvas_assets")
+    .insert({
+      thread_id: threadId as any,
+      user_id: user.id,
+      label: title,
+      base_storage_bucket: baseBucket,
+      base_storage_path: basePath,
+      current_storage_bucket: baseBucket,
+      current_storage_path: basePath,
+    })
+    .select("id")
+    .single();
+  if (assetErr) return NextResponse.json({ error: assetErr.message }, { status: 500 });
+
+  return NextResponse.json({ thread, conversationId: conv.id, assetId: asset.id });
 }
 
 

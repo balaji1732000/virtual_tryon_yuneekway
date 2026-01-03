@@ -23,6 +23,8 @@ export default function GenerateModel() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [resultPath, setResultPath] = useState<string | null>(null);
+    const [resultJobId, setResultJobId] = useState<string | null>(null);
+    const [resultOutputId, setResultOutputId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleImageUpload = (file: File) => {
@@ -44,6 +46,8 @@ export default function GenerateModel() {
         setError(null);
         setResult(null);
         setResultPath(null);
+        setResultJobId(null);
+        setResultOutputId(null);
 
         try {
             const formData = new FormData();
@@ -62,10 +66,12 @@ export default function GenerateModel() {
             });
 
             const data = await response.json();
-            if (data.error) throw new Error(data.error);
+            if (!response.ok) throw new Error(data?.error || "Generation failed");
 
             setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);
             setResultPath(data.storagePath || null);
+            setResultJobId(data.jobId || null);
+            setResultOutputId(data.outputId || null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -165,10 +171,10 @@ export default function GenerateModel() {
                         subtitle="Generated model image"
                         right={result ? (
                             <div className="flex items-center gap-3">
-                                {resultPath && (
+                                {resultJobId && resultOutputId && (
                                     <a
                                         className="text-sm text-[color:var(--sp-text)] hover:underline"
-                                        href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Model Generator")}`}
+                                        href={`/app/canvas?jobId=${encodeURIComponent(resultJobId)}&outputId=${encodeURIComponent(resultOutputId)}`}
                                     >
                                         Edit in Magic Canvas
                                     </a>

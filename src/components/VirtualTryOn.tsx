@@ -13,6 +13,8 @@ export default function VirtualTryOn() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [resultPath, setResultPath] = useState<string | null>(null);
+    const [resultOutputId, setResultOutputId] = useState<string | null>(null);
+    const [resultJobId, setResultJobId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleImageUpload = (file: File, type: 'model' | 'dress') => {
@@ -39,6 +41,8 @@ export default function VirtualTryOn() {
         setError(null);
         setResult(null);
         setResultPath(null);
+        setResultOutputId(null);
+        setResultJobId(null);
 
         try {
             const formData = new FormData();
@@ -53,10 +57,12 @@ export default function VirtualTryOn() {
             });
 
             const data = await response.json();
-            if (data.error) throw new Error(data.error);
+            if (!response.ok) throw new Error(data?.error || "Generation failed");
 
             setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);
             setResultPath(data.storagePath || null);
+            setResultOutputId(data.outputId || null);
+            setResultJobId(data.jobId || null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -167,10 +173,10 @@ export default function VirtualTryOn() {
                     subtitle="Generated try-on output"
                     right={result ? (
                         <div className="flex items-center gap-3">
-                            {resultPath && (
+                            {resultJobId && resultOutputId && (
                                 <a
                                     className="text-sm text-[color:var(--sp-text)] hover:underline"
-                                    href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Try-On")}`}
+                                    href={`/app/canvas?jobId=${encodeURIComponent(resultJobId)}&outputId=${encodeURIComponent(resultOutputId)}`}
                                 >
                                     Edit in Magic Canvas
                                 </a>

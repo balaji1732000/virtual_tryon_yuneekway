@@ -124,7 +124,7 @@ export default async function HistoryPage() {
                       <div className="flex items-center gap-3">
                         {o.signedUrl && (o.mime_type || "").startsWith("image/") && (
                           <Link
-                            href={`/app/canvas?fromBucket=${encodeURIComponent((o as any).bucket)}&fromPath=${encodeURIComponent(o.storage_path)}&title=${encodeURIComponent(g.jobType)}`}
+                            href={`/app/canvas?jobId=${encodeURIComponent(o.job_id)}&outputId=${encodeURIComponent(o.id)}`}
                             className="text-xs hover:underline text-[color:var(--sp-text)]"
                           >
                             Edit

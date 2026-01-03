@@ -17,7 +17,7 @@ export default function ProductPack() {
     const [selectedAngles, setSelectedAngles] = useState<string[]>(["Front", "Back"]);
     const [ratio, setRatio] = useState("1:1 (Square)");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [results, setResults] = useState<{ angle: string; image: string; storagePath?: string }[]>([]);
+    const [results, setResults] = useState<{ angle: string; image: string; storagePath?: string; outputId?: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
     const [profiles, setProfiles] = useState<any[]>([]);
@@ -117,7 +117,7 @@ export default function ProductPack() {
                 if (data.error) throw new Error(data.error);
 
                 const img = data.signedUrl || `data:${data.mimeType};base64,${data.image}`;
-                setResults(prev => [...prev, { angle, image: img, storagePath: data.storagePath }]);
+                setResults(prev => [...prev, { angle, image: img, storagePath: data.storagePath, outputId: data.outputId }]);
             }
         } catch (err: any) {
             setError(err.message);
@@ -284,10 +284,10 @@ export default function ProductPack() {
                                     </a>
                                     <div className="mt-1 flex items-center justify-between gap-2">
                                         <div className="text-[11px] text-[color:var(--sp-muted)] truncate">{res.angle}</div>
-                                        {res.storagePath && (
+                                        {res.outputId && jobId && (
                                             <a
                                                 className="text-[11px] text-[color:var(--sp-text)] hover:underline"
-                                                href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(res.storagePath)}&title=${encodeURIComponent("Product Pack")}`}
+                                                href={`/app/canvas?jobId=${encodeURIComponent(jobId)}&outputId=${encodeURIComponent(res.outputId)}`}
                                             >
                                                 Edit
                                             </a>

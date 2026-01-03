@@ -61,6 +61,7 @@ export const generateModelWithDress = async (
       1) Keep the SAME person as in the reference image (face, hairline, skin texture, body proportions). Do NOT change identity.
       2) PRESERVE the EXACT hair style, length, color, and texture from the reference image across ALL angles. Hair must look identical.
       3) Remove original clothes and dress the model ONLY with the GARMENT IMAGE. Preserve fabric color/texture without distortion.
+      3b) Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
       4) Fit realistically with correct wrinkles/physics; align neck/shoulders; no artifacts.
       5) Lighting consistent across the set; avoid added accessories or text.
       6) For BACK angle: show model's back; keep face/head shape and hair EXACTLY the same as reference identity.
@@ -74,8 +75,9 @@ export const generateModelWithDress = async (
       - Additional instructions: ${additionalPrompt}
     `;
         parts.push({ text: prompt });
-        parts.push({ inlineData: { data: dressImageBase64, mimeType: 'image/jpeg' } });
+        // IMPORTANT: order images reference-first, then garment
         parts.push({ inlineData: { data: referenceModelBase64, mimeType: 'image/jpeg' } });
+        parts.push({ inlineData: { data: dressImageBase64, mimeType: 'image/jpeg' } });
     } else {
         prompt = `
       Create a neutral, attractive ${gender.toLowerCase()} model with ${skinTone} skin tone. 
@@ -84,6 +86,7 @@ export const generateModelWithDress = async (
       Show the model wearing the provided garment from ${angle} angle.
       Aspect ratio: ${aspectRatioStr}.
       Preserve the exact fabric, color, pattern, and design of the original garment.
+      Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
       Ensure consistent hair style and appearance across all angles if generating multiple views.
       Ensure the image is high-quality, sharp, and photo-realistic.
       Additional instructions: ${additionalPrompt}
