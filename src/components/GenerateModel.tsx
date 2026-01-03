@@ -82,13 +82,13 @@ export default function GenerateModel() {
                     <CardHeader title="Garment image" subtitle="Upload the product photo" />
                     <CardBody className="space-y-4">
                         <div
-                            className="aspect-[3/4] rounded-2xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer"
+                            className="aspect-[3/4] rounded-2xl border border-dashed border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('dress-upload-model')?.click()}
                         >
                             {dressPreview ? (
                                 <img src={dressPreview} alt="Dress" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-center p-6 text-slate-500">
+                                <div className="text-center p-6 text-[color:var(--sp-muted)]">
                                     <ImageIcon size={42} className="mx-auto mb-2 opacity-70" />
                                     <div className="text-sm">Click to upload</div>
                                 </div>
@@ -109,26 +109,26 @@ export default function GenerateModel() {
                     <CardBody className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Gender</label>
-                                <select value={gender} onChange={e => setGender(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Gender</label>
+                                <select value={gender} onChange={e => setGender(e.target.value)} className="w-full input-field text-sm">
                                     {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Skin tone</label>
-                                <select value={skinTone} onChange={e => setSkinTone(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Skin tone</label>
+                                <select value={skinTone} onChange={e => setSkinTone(e.target.value)} className="w-full input-field text-sm">
                                     {SKIN_TONES.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Region</label>
-                                <select value={region} onChange={e => setRegion(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Region</label>
+                                <select value={region} onChange={e => setRegion(e.target.value)} className="w-full input-field text-sm">
                                     {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Angle</label>
-                                <select value={angle} onChange={e => setAngle(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Angle</label>
+                                <select value={angle} onChange={e => setAngle(e.target.value)} className="w-full input-field text-sm">
                                     {ANGLES.map(a => <option key={a} value={a}>{a}</option>)}
                                 </select>
                             </div>
@@ -141,7 +141,7 @@ export default function GenerateModel() {
                         >
                             {isGenerating ? (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <div className="w-4 h-4 spinner-primary rounded-full animate-spin" />
                                     Generating…
                                 </div>
                             ) : (
@@ -152,7 +152,7 @@ export default function GenerateModel() {
                         </button>
 
                         {error && (
-                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                            <div className="alert-error text-xs flex items-center gap-2">
                                 <AlertCircle size={14} /> {error}
                             </div>
                         )}
@@ -167,13 +167,13 @@ export default function GenerateModel() {
                             <div className="flex items-center gap-3">
                                 {resultPath && (
                                     <a
-                                        className="text-sm text-slate-700 hover:underline"
+                                        className="text-sm text-[color:var(--sp-text)] hover:underline"
                                         href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Model Generator")}`}
                                     >
                                         Edit in Magic Canvas
                                     </a>
                                 )}
-                                <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={result} download>
+                                <a className="text-sm text-[color:var(--sp-text)] hover:underline inline-flex items-center gap-1" href={result} download>
                                     <Download size={16} /> Download
                                 </a>
                             </div>
@@ -181,11 +181,11 @@ export default function GenerateModel() {
                     />
                     <CardBody>
                         {result ? (
-                            <div className="aspect-[3/4] rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                            <div className="aspect-[3/4] rounded-2xl overflow-hidden border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)]">
                                 <img src={result} alt="Result" className="w-full h-full object-cover" />
                             </div>
                         ) : (
-                            <div className="aspect-[3/4] rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400">
+                            <div className="aspect-[3/4] rounded-2xl border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center text-[color:var(--sp-muted)]">
                                 <div className="text-sm">No output yet</div>
                             </div>
                         )}

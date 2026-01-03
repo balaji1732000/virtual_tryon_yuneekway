@@ -89,14 +89,14 @@ export default async function HistoryPage() {
       </div>
 
       {groups.length === 0 ? (
-        <div className="rounded-xl border border-black/10 bg-white p-6">
+        <div className="glass-panel p-6">
           <div className="text-sm font-medium">No outputs yet</div>
           <div className="text-sm opacity-70 mt-1">Generate something from Product Pack / Try-On / Extract Garment and it will appear here.</div>
         </div>
       ) : (
         <div className="space-y-5">
           {groups.map(([jobId, g]) => (
-            <div key={jobId} className="rounded-2xl border border-black/10 bg-white p-5">
+            <div key={jobId} className="glass-panel p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold">{g.jobType}</div>
@@ -107,8 +107,8 @@ export default async function HistoryPage() {
 
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {g.outputs.map((o) => (
-                  <div key={o.id} className="rounded-xl border border-black/10 overflow-hidden">
-                    <div className="aspect-[3/2] bg-black/[0.03] flex items-center justify-center overflow-hidden">
+                  <div key={o.id} className="rounded-xl border border-[color:var(--sp-border)] overflow-hidden">
+                    <div className="aspect-[3/2] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden">
                       {o.signedUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={o.signedUrl} alt={o.angle || o.kind} className="h-full w-full object-contain" />
@@ -125,13 +125,13 @@ export default async function HistoryPage() {
                         {o.signedUrl && (o.mime_type || "").startsWith("image/") && (
                           <Link
                             href={`/app/canvas?fromBucket=${encodeURIComponent((o as any).bucket)}&fromPath=${encodeURIComponent(o.storage_path)}&title=${encodeURIComponent(g.jobType)}`}
-                            className="text-xs hover:underline"
+                            className="text-xs hover:underline text-[color:var(--sp-text)]"
                           >
                             Edit
                           </Link>
                         )}
                         {o.signedUrl && (
-                          <a href={o.signedUrl} target="_blank" rel="noreferrer" className="text-xs hover:underline">
+                          <a href={o.signedUrl} target="_blank" rel="noreferrer" className="text-xs hover:underline text-[color:var(--sp-text)]">
                             Download
                           </a>
                         )}

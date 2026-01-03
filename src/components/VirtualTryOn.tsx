@@ -73,13 +73,13 @@ export default function VirtualTryOn() {
                     <CardHeader title="Model image" subtitle="Upload the person/model photo" />
                     <CardBody>
                         <div
-                            className="aspect-[3/4] rounded-2xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer"
+                            className="aspect-[3/4] rounded-2xl border border-dashed border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('model-upload')?.click()}
                         >
                             {modelPreview ? (
                                 <img src={modelPreview} alt="Model" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-center p-6 text-slate-500">
+                                <div className="text-center p-6 text-[color:var(--sp-muted)]">
                                     <ImageIcon size={42} className="mx-auto mb-2 opacity-70" />
                                     <div className="text-sm">Click to upload</div>
                                 </div>
@@ -99,13 +99,13 @@ export default function VirtualTryOn() {
                     <CardHeader title="Garment image" subtitle="Upload the dress/product photo" />
                     <CardBody>
                         <div
-                            className="aspect-[3/4] rounded-2xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer"
+                            className="aspect-[3/4] rounded-2xl border border-dashed border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('dress-upload')?.click()}
                         >
                             {dressPreview ? (
                                 <img src={dressPreview} alt="Dress" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-center p-6 text-slate-500">
+                                <div className="text-center p-6 text-[color:var(--sp-muted)]">
                                     <ImageIcon size={42} className="mx-auto mb-2 opacity-70" />
                                     <div className="text-sm">Click to upload</div>
                                 </div>
@@ -125,12 +125,12 @@ export default function VirtualTryOn() {
                     <CardHeader title="Generate" subtitle="Optional guidance + run" />
                     <CardBody className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Additional instructions</label>
+                            <label className="text-sm font-medium opacity-70">Additional instructions</label>
                             <textarea
                                 value={additionalPrompt}
                                 onChange={e => setAdditionalPrompt(e.target.value)}
                                 placeholder="e.g., keep background, tighter fit, studio lighting…"
-                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                className="w-full input-field text-sm"
                                 rows={4}
                             />
                         </div>
@@ -142,7 +142,7 @@ export default function VirtualTryOn() {
                         >
                             {isGenerating ? (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <div className="w-4 h-4 spinner-primary rounded-full animate-spin" />
                                     Processing...
                                 </div>
                             ) : (
@@ -153,7 +153,7 @@ export default function VirtualTryOn() {
                         </button>
 
                         {error && (
-                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                            <div className="alert-error text-xs flex items-center gap-2">
                                 <AlertCircle size={14} /> {error}
                             </div>
                         )}
@@ -169,13 +169,13 @@ export default function VirtualTryOn() {
                         <div className="flex items-center gap-3">
                             {resultPath && (
                                 <a
-                                    className="text-sm text-slate-700 hover:underline"
+                                    className="text-sm text-[color:var(--sp-text)] hover:underline"
                                     href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(resultPath)}&title=${encodeURIComponent("Try-On")}`}
                                 >
                                     Edit in Magic Canvas
                                 </a>
                             )}
-                            <a className="text-sm text-slate-700 hover:underline" href={result} download>
+                            <a className="text-sm text-[color:var(--sp-text)] hover:underline" href={result} download>
                                 <span className="inline-flex items-center gap-1"><Download size={16} /> Download</span>
                             </a>
                         </div>
@@ -183,11 +183,11 @@ export default function VirtualTryOn() {
                 />
                 <CardBody>
                     {result ? (
-                        <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-slate-50 border border-slate-200">
+                        <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-[color:var(--sp-hover)] border border-[color:var(--sp-border)]">
                             <img src={result} alt="Result" className="w-full h-full object-contain" />
                         </div>
                     ) : (
-                        <div className="w-full aspect-[16/9] rounded-2xl flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-400">
+                        <div className="w-full aspect-[16/9] rounded-2xl flex items-center justify-center bg-[color:var(--sp-hover)] border border-[color:var(--sp-border)] text-[color:var(--sp-muted)]">
                             <div className="text-sm">No output yet</div>
                         </div>
                     )}

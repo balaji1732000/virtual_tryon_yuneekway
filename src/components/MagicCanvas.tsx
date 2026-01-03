@@ -182,16 +182,16 @@ export default function MagicCanvas() {
           <CardHeader title="Magic Canvas" subtitle="Upload an image, paint where to edit, and refine using chat." />
           <CardBody className="space-y-4">
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>
+              <div className="alert-error text-xs">{error}</div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Thread</label>
+                <label className="text-sm font-medium opacity-70">Thread</label>
                 <select
                   value={threadId}
                   onChange={(e) => (e.target.value ? loadThread(e.target.value) : null)}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                  className="w-full input-field text-sm"
                 >
                   <option value="">-- New thread --</option>
                   {threads.map((t) => (
@@ -204,22 +204,22 @@ export default function MagicCanvas() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Title</label>
+                <label className="text-sm font-medium opacity-70">Title</label>
                 <input
                   value={threadTitle}
                   onChange={(e) => setThreadTitle(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                  className="w-full input-field text-sm"
                   placeholder="e.g. Banner retouch"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-sm font-medium text-slate-700">Upload base image</label>
+                <label className="text-sm font-medium opacity-70">Upload base image</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setUpload(e.target.files?.[0] || null)}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-2 text-sm"
+                  className="w-full input-field text-sm p-2"
                 />
                 <button
                   type="button"
@@ -260,14 +260,16 @@ export default function MagicCanvas() {
               messages.map((m) => (
                 <div
                   key={m.id}
-                  className={`rounded-2xl border border-black/10 p-3 ${m.role === "user" ? "bg-white" : "bg-black/[0.02]"}`}
+                    className={`rounded-2xl border border-[color:var(--sp-border)] p-3 ${
+                      m.role === "user" ? "bg-[color:var(--sp-panel)]" : "bg-[color:var(--sp-hover)]"
+                    }`}
                 >
                   <div className="text-xs opacity-60 mb-1">{m.role === "user" ? "You" : "Assistant"}</div>
                   {m.text && <div className="text-sm whitespace-pre-wrap">{m.text}</div>}
                   {m.outputUrl && (
                     <div className="mt-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={m.outputUrl} alt="output" className="w-full rounded-xl border border-black/10" />
+                        <img src={m.outputUrl} alt="output" className="w-full rounded-xl border border-[color:var(--sp-border)]" />
                     </div>
                   )}
                 </div>
@@ -280,7 +282,7 @@ export default function MagicCanvas() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+              className="w-full input-field text-sm"
               placeholder="e.g. Change the dress color to black, keep face/hair/background unchanged."
             />
             <button

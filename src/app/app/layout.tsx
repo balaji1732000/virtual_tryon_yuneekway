@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutGrid },
@@ -29,7 +30,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-black/[0.03] transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[color:var(--sp-hover)] transition-colors text-sm"
               >
                 <item.icon size={16} className="opacity-70" />
                 <span>{item.label}</span>
@@ -37,7 +38,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <div className="mt-6 pt-6 border-t border-black/5">
+          <div className="mt-6 pt-6 border-t border-[color:var(--sp-border)] space-y-3">
+            <ThemeToggle />
             <form action="/auth/logout" method="post">
               <button className="w-full btn-secondary">Log out</button>
             </form>

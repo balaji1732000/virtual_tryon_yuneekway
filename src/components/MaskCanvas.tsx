@@ -180,18 +180,30 @@ export function MaskCanvas(props: {
         <button
           type="button"
           onClick={() => setTool("brush")}
-          className={`px-3 py-1.5 rounded-full text-sm border ${tool === "brush" ? "bg-black text-white border-black" : "bg-white border-black/10"}`}
+          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+            tool === "brush"
+              ? "bg-[color:var(--sp-primary)] text-[color:var(--sp-primary-text)] border-[color:var(--sp-primary)]"
+              : "bg-[color:var(--sp-panel)] border-[color:var(--sp-border)] hover:bg-[color:var(--sp-hover)]"
+          }`}
         >
           Brush
         </button>
         <button
           type="button"
           onClick={() => setTool("erase")}
-          className={`px-3 py-1.5 rounded-full text-sm border ${tool === "erase" ? "bg-black text-white border-black" : "bg-white border-black/10"}`}
+          className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+            tool === "erase"
+              ? "bg-[color:var(--sp-primary)] text-[color:var(--sp-primary-text)] border-[color:var(--sp-primary)]"
+              : "bg-[color:var(--sp-panel)] border-[color:var(--sp-border)] hover:bg-[color:var(--sp-hover)]"
+          }`}
         >
           Erase
         </button>
-        <button type="button" onClick={clearMask} className="px-3 py-1.5 rounded-full text-sm border bg-white border-black/10">
+        <button
+          type="button"
+          onClick={clearMask}
+          className="px-3 py-1.5 rounded-full text-sm border bg-[color:var(--sp-panel)] border-[color:var(--sp-border)] hover:bg-[color:var(--sp-hover)] transition-colors"
+        >
           Clear
         </button>
         <label className="ml-2 flex items-center gap-2 text-sm">
@@ -211,7 +223,7 @@ export function MaskCanvas(props: {
         </label>
       </div>
 
-      <div className="rounded-2xl border border-black/10 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-[color:var(--sp-border)] bg-[color:var(--sp-panel)] overflow-hidden">
         <div className="relative">
           {props.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -234,5 +246,6 @@ export function MaskCanvas(props: {
     </div>
   );
 }
+
 
 

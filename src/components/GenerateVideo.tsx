@@ -93,13 +93,13 @@ export default function GenerateVideo() {
                     <CardHeader title="Input" subtitle="Garment image" />
                     <CardBody className="space-y-4">
                         <div
-                            className="aspect-[3/4] rounded-2xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer"
+                            className="aspect-[3/4] rounded-2xl border border-dashed border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('dress-upload-video')?.click()}
                         >
                             {dressPreview ? (
                                 <img src={dressPreview} alt="Dress" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-center p-6 text-slate-500">
+                                <div className="text-center p-6 text-[color:var(--sp-muted)]">
                                     <ImageIcon size={42} className="mx-auto mb-2 opacity-70" />
                                     <div className="text-sm">Click to upload</div>
                                 </div>
@@ -122,7 +122,7 @@ export default function GenerateVideo() {
                             value={prompt}
                             onChange={e => setPrompt(e.target.value)}
                             placeholder="e.g. A cinematic runway walk, soft sunlight, 4k…"
-                            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                            className="w-full input-field text-sm"
                             rows={8}
                         />
 
@@ -144,7 +144,7 @@ export default function GenerateVideo() {
                         </button>
 
                         {error && (
-                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                            <div className="alert-error text-xs flex items-center gap-2">
                                 <AlertCircle size={14} /> {error}
                             </div>
                         )}
@@ -156,18 +156,18 @@ export default function GenerateVideo() {
                         title="Result"
                         subtitle={operationId ? `Operation: ${operationId}` : "Generated video"}
                         right={videoUrl ? (
-                            <a className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" href={videoUrl} download>
+                            <a className="text-sm text-[color:var(--sp-text)] hover:underline inline-flex items-center gap-1" href={videoUrl} download>
                                 <Download size={16} /> Download
                             </a>
                         ) : null}
                     />
                     <CardBody>
                         {videoUrl ? (
-                            <div className="aspect-[16/9] rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
+                            <div className="aspect-[16/9] rounded-2xl overflow-hidden border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)]">
                                 <video src={videoUrl} controls className="w-full h-full object-contain" />
                             </div>
                         ) : (
-                            <div className="aspect-[16/9] rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-400">
+                            <div className="aspect-[16/9] rounded-2xl border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center text-[color:var(--sp-muted)]">
                                 {isGenerating ? (
                                     <div className="flex items-center gap-2 text-sm">
                                         <Loader2 size={18} className="animate-spin" />

@@ -154,14 +154,14 @@ export default function ProfileCreator() {
                             <button
                                 type="button"
                                 onClick={startNewProfile}
-                                className="text-sm text-slate-700 hover:underline"
+                                className="text-sm text-[color:var(--sp-text)] hover:underline"
                             >
                                 New profile
                             </button>
                             <button
                                 type="button"
                                 onClick={loadProfiles}
-                                className="text-sm text-slate-700 hover:underline disabled:opacity-50"
+                                className="text-sm text-[color:var(--sp-text)] hover:underline disabled:opacity-50"
                                 disabled={loading}
                             >
                                 Refresh
@@ -170,13 +170,13 @@ export default function ProfileCreator() {
                     } />
                     <CardBody className="space-y-4">
                         {error && (
-                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                            <div className="alert-error text-xs">
                                 {error}
                             </div>
                         )}
 
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-slate-700">Existing profiles</label>
+                            <label className="text-sm font-medium opacity-70">Existing profiles</label>
                             <select
                                 value={selectedProfileId}
                                 onChange={(e) => {
@@ -185,7 +185,7 @@ export default function ProfileCreator() {
                                     const p = profiles.find((x) => x.id === id);
                                     if (p) handleSelectProfile(p);
                                 }}
-                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                className="w-full input-field text-sm"
                             >
                                 <option value="">-- New profile --</option>
                                 {profiles.map((p) => (
@@ -194,44 +194,44 @@ export default function ProfileCreator() {
                                     </option>
                                 ))}
                             </select>
-                            <div className="text-xs text-slate-500 mt-1">
+                            <div className="text-xs text-[color:var(--sp-muted)] mt-1">
                                 Profiles are stored in Supabase and can be reused across sessions.
                             </div>
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-slate-700">Profile name</label>
+                            <label className="text-sm font-medium opacity-70">Profile name</label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g. Summer Collection Model"
-                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                className="w-full input-field text-sm"
                             />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Gender</label>
-                                <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Gender</label>
+                                <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full input-field text-sm">
                                     {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Skin tone</label>
-                                <select value={skinTone} onChange={(e) => setSkinTone(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Skin tone</label>
+                                <select value={skinTone} onChange={(e) => setSkinTone(e.target.value)} className="w-full input-field text-sm">
                                     {SKIN_TONES.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Region (styling context)</label>
-                                <select value={region} onChange={(e) => setRegion(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Region (styling context)</label>
+                                <select value={region} onChange={(e) => setRegion(e.target.value)} className="w-full input-field text-sm">
                                     {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Background</label>
-                                <select value={background} onChange={(e) => setBackground(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10">
+                                <label className="text-sm font-medium opacity-70">Background</label>
+                                <select value={background} onChange={(e) => setBackground(e.target.value)} className="w-full input-field text-sm">
                                     {BACKGROUND_STYLES.map(b => <option key={b} value={b}>{b}</option>)}
                                 </select>
                             </div>
@@ -251,13 +251,13 @@ export default function ProfileCreator() {
                     <CardHeader title="Reference image" subtitle="Used for identity consistency" />
                     <CardBody className="space-y-3">
                         <div
-                            className="aspect-[3/4] rounded-2xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer"
+                            className="aspect-[3/4] rounded-2xl border border-dashed border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('profile-upload')?.click()}
                         >
                             {image ? (
                                 <img src={image} alt="Reference" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-center p-6 text-slate-500">
+                                <div className="text-center p-6 text-[color:var(--sp-muted)]">
                                     <Upload size={42} className="mx-auto mb-2 opacity-70" />
                                     <div className="text-sm">Click to upload</div>
                                 </div>
@@ -270,7 +270,7 @@ export default function ProfileCreator() {
                                 onChange={handleImageUpload}
                             />
                         </div>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-[color:var(--sp-muted)]">
                             Tip: use a clear, face-forward photo. Hair will be preserved across angles.
                         </p>
                     </CardBody>
@@ -278,7 +278,7 @@ export default function ProfileCreator() {
             </div>
 
             {activeProfile && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center gap-2">
+                <div className="alert-success text-xs flex items-center gap-2">
                     <CheckCircle size={14} />
                     <span>Active profile: <b>{activeProfile.name}</b> ({activeProfile.gender}, {activeProfile.skinTone}, {activeProfile.region})</span>
                 </div>

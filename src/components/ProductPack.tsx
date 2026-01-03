@@ -134,7 +134,7 @@ export default function ProductPack() {
             />
 
             {!activeProfile && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-center gap-2">
+                <div className="alert-warn text-xs flex items-center gap-2">
                     <AlertCircle size={14} />
                     <span>No active profile selected. Choose one below (or create one in “Model Profiles”).</span>
                 </div>
@@ -145,11 +145,11 @@ export default function ProductPack() {
                     <CardHeader title="Inputs" subtitle="SKU + images" />
                     <CardBody className="space-y-4">
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-slate-700">Model profile</label>
+                            <label className="text-sm font-medium opacity-70">Model profile</label>
                             <select
                                 value={activeProfile?.id || ""}
                                 onChange={(e) => selectProfileById(e.target.value)}
-                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                className="w-full input-field text-sm"
                             >
                                 <option value="">-- Select a profile --</option>
                                 {profiles.map((p) => (
@@ -158,7 +158,7 @@ export default function ProductPack() {
                                     </option>
                                 ))}
                             </select>
-                            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+                            <div className="flex items-center justify-between text-xs text-[color:var(--sp-muted)] mt-1">
                                 <span>{profiles.length} profile(s)</span>
                                 <div className="flex items-center gap-3">
                                     <a href="/app/profiles" className="hover:underline">Create new</a>
@@ -171,34 +171,34 @@ export default function ProductPack() {
 
                         <div className="grid grid-cols-1 gap-3">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Product ID (SKU)</label>
+                                <label className="text-sm font-medium opacity-70">Product ID (SKU)</label>
                                 <input
                                     type="text"
                                     value={productId}
                                     onChange={e => setProductId(e.target.value)}
                                     placeholder="e.g. SKU123"
-                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                    className="w-full input-field text-sm"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Title</label>
+                                <label className="text-sm font-medium opacity-70">Title</label>
                                 <input
                                     type="text"
                                     value={title}
                                     onChange={e => setTitle(e.target.value)}
                                     placeholder="Optional"
-                                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                    className="w-full input-field text-sm"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 gap-3">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Front view (required)</label>
+                                <label className="text-sm font-medium opacity-70">Front view (required)</label>
                                 <input type="file" onChange={e => setFrontImage(e.target.files?.[0] || null)} className="w-full text-sm" />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-700">Back view (optional)</label>
+                                <label className="text-sm font-medium opacity-70">Back view (optional)</label>
                                 <input type="file" onChange={e => setBackImage(e.target.files?.[0] || null)} className="w-full text-sm" />
                             </div>
                         </div>
@@ -209,15 +209,16 @@ export default function ProductPack() {
                     <CardHeader title="Settings" subtitle="Angles + ratio" />
                     <CardBody className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">Angles to render</label>
+                            <label className="text-sm font-medium opacity-70">Angles to render</label>
                             <div className="flex flex-wrap gap-2">
                                 {ANGLES.map(angle => (
                                     <button
                                         key={angle}
                                         onClick={() => handleToggleAngle(angle)}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${selectedAngles.includes(angle)
-                                            ? "bg-black text-white border-black"
-                                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                                            selectedAngles.includes(angle)
+                                                ? "bg-[color:var(--sp-primary)] text-[color:var(--sp-primary-text)] border-[color:var(--sp-primary)]"
+                                                : "bg-[color:var(--sp-panel)] text-[color:var(--sp-text)] border-[color:var(--sp-border)] hover:bg-[color:var(--sp-hover)]"
                                             }`}
                                     >
                                         {angle}
@@ -227,11 +228,11 @@ export default function ProductPack() {
                         </div>
 
                         <div className="space-y-1">
-                            <label className="text-sm font-medium text-slate-700">Aspect ratio</label>
+                            <label className="text-sm font-medium opacity-70">Aspect ratio</label>
                             <select
                                 value={ratio}
                                 onChange={e => setRatio(e.target.value)}
-                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-black/10"
+                                className="w-full input-field text-sm"
                             >
                                 {RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
@@ -244,7 +245,7 @@ export default function ProductPack() {
                         >
                             {isGenerating ? (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <div className="w-4 h-4 spinner-primary rounded-full animate-spin" />
                                     Generating…
                                 </div>
                             ) : (
@@ -255,7 +256,7 @@ export default function ProductPack() {
                         </button>
 
                         {error && (
-                            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                            <div className="alert-error text-xs flex items-center gap-2">
                                 <AlertCircle size={14} /> {error}
                             </div>
                         )}
@@ -267,7 +268,7 @@ export default function ProductPack() {
                         title="Outputs"
                         subtitle={jobId ? `Job: ${jobId}` : "Generated renders"}
                         right={results.length > 0 ? (
-                            <button className="text-sm text-slate-700 hover:underline inline-flex items-center gap-1" disabled>
+                            <button className="text-sm text-[color:var(--sp-muted)] hover:underline inline-flex items-center gap-1" disabled>
                                 <Download size={16} /> ZIP (next)
                             </button>
                         ) : null}
@@ -277,15 +278,15 @@ export default function ProductPack() {
                             {results.map((res, i) => (
                                 <div key={i} className="group">
                                     <a href={res.image} target="_blank" rel="noreferrer" className="block">
-                                        <div className="aspect-[3/4] rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                                        <div className="aspect-[3/4] rounded-xl overflow-hidden border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)]">
                                             <img src={res.image} alt={res.angle} className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform" />
                                         </div>
                                     </a>
                                     <div className="mt-1 flex items-center justify-between gap-2">
-                                        <div className="text-[11px] text-slate-600 truncate">{res.angle}</div>
+                                        <div className="text-[11px] text-[color:var(--sp-muted)] truncate">{res.angle}</div>
                                         {res.storagePath && (
                                             <a
-                                                className="text-[11px] text-slate-700 hover:underline"
+                                                className="text-[11px] text-[color:var(--sp-text)] hover:underline"
                                                 href={`/app/canvas?fromBucket=${encodeURIComponent("outputs")}&fromPath=${encodeURIComponent(res.storagePath)}&title=${encodeURIComponent("Product Pack")}`}
                                             >
                                                 Edit
@@ -296,13 +297,13 @@ export default function ProductPack() {
                             ))}
 
                             {isGenerating && results.length < selectedAngles.length && (
-                                <div className="aspect-[3/4] rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
-                                    <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+                                <div className="aspect-[3/4] rounded-xl border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center">
+                                    <div className="w-6 h-6 spinner-muted rounded-full animate-spin" />
                                 </div>
                             )}
 
                             {results.length === 0 && !isGenerating && (
-                                <div className="col-span-2 aspect-[3/2] rounded-xl border border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400">
+                                <div className="col-span-2 aspect-[3/2] rounded-xl border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex flex-col items-center justify-center text-[color:var(--sp-muted)]">
                                     <ImageIcon size={42} className="mb-2" />
                                     <div className="text-sm">Renders will appear here</div>
                                 </div>
