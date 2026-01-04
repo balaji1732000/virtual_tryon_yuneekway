@@ -133,7 +133,17 @@ export async function POST(req: NextRequest) {
         referenceNorm = referenceImage ? await normalizeToJpeg(referenceImage) : null;
         referenceBase64 = referenceNorm ? referenceNorm.buffer.toString("base64") : undefined;
       } catch (e: any) {
-        return NextResponse.json({ error: e?.message || "Unable to process input image" }, { status: 400 });
+        const msg = String(e?.message || "");
+        if (msg.toLowerCase().includes("unsupported image format")) {
+          return NextResponse.json(
+            {
+              error:
+                "Reference image is not a valid image (often caused by an expired profile image link). Please click Refresh and reselect your model profile, then retry.",
+            },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json({ error: msg || "Unable to process input image" }, { status: 400 });
       }
 
       const garmentView = angle.toLowerCase().includes("back") ? ("back" as const) : ("front" as const);

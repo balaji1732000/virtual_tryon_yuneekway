@@ -108,8 +108,15 @@ export default function ProductPack() {
                 formData.append('dressImage', garmentToUse);
 
                 if (activeProfile.referenceImage) {
-                    // Convert base64 to blob
-                    const res = await fetch(activeProfile.referenceImage);
+                    // Fetch reference image (signed URL). If it expired, it may return HTML/JSON which breaks sharp.
+                    const res = await fetch(activeProfile.referenceImage, { cache: "no-store" });
+                    if (!res.ok) {
+                        throw new Error("Your model profile reference image link expired. Click Refresh and reselect the profile, then retry.");
+                    }
+                    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+                    if (!contentType.startsWith("image/")) {
+                        throw new Error("Your model profile reference image link expired (not an image). Click Refresh and reselect the profile, then retry.");
+                    }
                     const blob = await res.blob();
                     formData.append('referenceImage', blob, 'reference.jpg');
                 }

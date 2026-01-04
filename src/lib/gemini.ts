@@ -46,6 +46,30 @@ export const generateModelWithDress = async (
     const referenceMimeType = opts?.referenceMimeType || "image/jpeg";
     const garmentView = opts?.garmentView || "front";
 
+    const normalizedAngle = (angle || "").trim().toLowerCase();
+    const angleInstruction = (() => {
+        // Keep this very explicit so the model doesn't mirror left/right.
+        if (normalizedAngle === "front") {
+            return "Front view: model facing camera, shoulders square, centered.";
+        }
+        if (normalizedAngle === "back") {
+            return "Back view: model facing away from camera; show the back of the garment clearly.";
+        }
+        if (normalizedAngle === "left-side" || normalizedAngle === "left side") {
+            return "Left side profile: show the model's LEFT profile (camera on model's left). Do NOT mirror a right-side view.";
+        }
+        if (normalizedAngle === "right-side" || normalizedAngle === "right side") {
+            return "Right side profile: show the model's RIGHT profile (camera on model's right). Do NOT mirror a left-side view.";
+        }
+        if (normalizedAngle === "three-quarter" || normalizedAngle === "three quarter" || normalizedAngle === "3/4") {
+            return "Three-quarter view: ~45-degree turn, with one shoulder slightly closer to camera; keep it distinct from pure side profile.";
+        }
+        if (normalizedAngle === "full body" || normalizedAngle === "full-body") {
+            return "Full body framing: include head-to-toe (or at least knees-to-head) with natural stance; do not crop tightly.";
+        }
+        return `Follow this exact view: ${angle}. Ensure it is not accidentally mirrored or duplicated from another angle.`;
+    })();
+
     let prompt = "";
     const parts: any[] = [];
 
@@ -57,7 +81,7 @@ export const generateModelWithDress = async (
       GARMENT IMAGE: [garment_image]
 
       RENDER SPECS:
-      - Angle: ${angle}
+      - View: ${angle} — ${angleInstruction}
       - Camera height: mid-torso; focal length ~50mm look; ${background}
       - Aspect ratio: ${aspectRatioStr} (strict)
 
@@ -74,8 +98,9 @@ export const generateModelWithDress = async (
       4) Fit realistically with correct wrinkles/physics; align neck/shoulders; no artifacts.
       5) Lighting consistent across the set; avoid added accessories or text.
       6) View consistency: the provided garment image is the ${garmentView.toUpperCase()} view. Do NOT mix front and back details.
-      7) For BACK angle: show model's back; keep head shape and hair EXACTLY the same as reference identity.
-      7) For SIDE angles: maintain the same hair style and positioning as shown in reference image.
+      7) Angle fidelity (critical): Follow the View instruction exactly. Left-Side and Right-Side must be different and must not be mirrored duplicates.
+      8) For BACK angle: show model's back; keep head shape and hair EXACTLY the same as reference identity.
+      9) For SIDE angles: maintain the same hair style and positioning as shown in reference image.
       8) Output: a single image.
 
       EXTRA CONTEXT:
@@ -93,7 +118,7 @@ export const generateModelWithDress = async (
       Create a neutral, attractive ${gender.toLowerCase()} model with ${skinTone} skin tone. 
       Region context: ${region} (use only for styling/hair and sizing context, do not stereotype). 
       Maintain ${background}. 
-      Show the model wearing the provided garment from ${angle} angle.
+      Show the model wearing the provided garment. View: ${angle} — ${angleInstruction}
       Aspect ratio: ${aspectRatioStr}.
       Preserve the exact fabric, color, pattern, and design of the original garment.
       Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
@@ -101,6 +126,7 @@ export const generateModelWithDress = async (
       - Do NOT stretch, slim, or warp the garment. Keep the exact silhouette and proportions from the garment image.
       - Keep zipper straight and centered (if present), preserve pocket placement and ribbing thickness.
       - The provided garment image is the ${garmentView.toUpperCase()} view. Do NOT mix front/back details.
+      Angle fidelity (critical): Left-Side and Right-Side must be different and must not be mirrored duplicates.
       Ensure consistent hair style and appearance across all angles if generating multiple views.
       Ensure the image is high-quality, sharp, and photo-realistic.
       Additional instructions: ${additionalPrompt}
