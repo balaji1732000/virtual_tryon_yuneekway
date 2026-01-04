@@ -38,9 +38,13 @@ export const generateModelWithDress = async (
     referenceModelBase64?: string,
     additionalPrompt: string = "",
     gender: string = "Female",
-    aspectRatioStr: string = "1:1"
+    aspectRatioStr: string = "1:1",
+    opts?: { garmentMimeType?: string; referenceMimeType?: string; garmentView?: "front" | "back" }
 ) => {
     const model = "gemini-2.5-flash-image-preview";
+    const garmentMimeType = opts?.garmentMimeType || "image/jpeg";
+    const referenceMimeType = opts?.referenceMimeType || "image/jpeg";
+    const garmentView = opts?.garmentView || "front";
 
     let prompt = "";
     const parts: any[] = [];
@@ -62,9 +66,15 @@ export const generateModelWithDress = async (
       2) PRESERVE the EXACT hair style, length, color, and texture from the reference image across ALL angles. Hair must look identical.
       3) Remove original clothes and dress the model ONLY with the GARMENT IMAGE. Preserve fabric color/texture without distortion.
       3b) Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
+      3c) GARMENT GEOMETRY LOCK (critical for ecommerce accuracy):
+          - Do NOT stretch, slim, or warp the garment. Keep the exact silhouette and proportions from the garment image.
+          - Keep the zipper line perfectly straight and centered (if present).
+          - Preserve pocket placement, ribbed cuffs/hem thickness, collar shape, and sleeve length.
+          - Preserve seam lines and panel proportions; do not invent/remove details.
       4) Fit realistically with correct wrinkles/physics; align neck/shoulders; no artifacts.
       5) Lighting consistent across the set; avoid added accessories or text.
-      6) For BACK angle: show model's back; keep face/head shape and hair EXACTLY the same as reference identity.
+      6) View consistency: the provided garment image is the ${garmentView.toUpperCase()} view. Do NOT mix front and back details.
+      7) For BACK angle: show model's back; keep head shape and hair EXACTLY the same as reference identity.
       7) For SIDE angles: maintain the same hair style and positioning as shown in reference image.
       8) Output: a single image.
 
@@ -76,8 +86,8 @@ export const generateModelWithDress = async (
     `;
         parts.push({ text: prompt });
         // IMPORTANT: order images reference-first, then garment
-        parts.push({ inlineData: { data: referenceModelBase64, mimeType: 'image/jpeg' } });
-        parts.push({ inlineData: { data: dressImageBase64, mimeType: 'image/jpeg' } });
+        parts.push({ inlineData: { data: referenceModelBase64, mimeType: referenceMimeType } });
+        parts.push({ inlineData: { data: dressImageBase64, mimeType: garmentMimeType } });
     } else {
         prompt = `
       Create a neutral, attractive ${gender.toLowerCase()} model with ${skinTone} skin tone. 
@@ -87,12 +97,16 @@ export const generateModelWithDress = async (
       Aspect ratio: ${aspectRatioStr}.
       Preserve the exact fabric, color, pattern, and design of the original garment.
       Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
+      GARMENT GEOMETRY LOCK (critical for ecommerce accuracy):
+      - Do NOT stretch, slim, or warp the garment. Keep the exact silhouette and proportions from the garment image.
+      - Keep zipper straight and centered (if present), preserve pocket placement and ribbing thickness.
+      - The provided garment image is the ${garmentView.toUpperCase()} view. Do NOT mix front/back details.
       Ensure consistent hair style and appearance across all angles if generating multiple views.
       Ensure the image is high-quality, sharp, and photo-realistic.
       Additional instructions: ${additionalPrompt}
     `;
         parts.push({ text: prompt });
-        parts.push({ inlineData: { data: dressImageBase64, mimeType: 'image/jpeg' } });
+        parts.push({ inlineData: { data: dressImageBase64, mimeType: garmentMimeType } });
     }
 
     const response = await client.models.generateContent({
@@ -100,7 +114,7 @@ export const generateModelWithDress = async (
         contents: [{ role: 'user', parts }],
         config: {
             responseModalities: ['IMAGE', 'TEXT'],
-            temperature: 0.3,
+            temperature: 0.2,
         },
     });
 
@@ -115,18 +129,18 @@ export const generateVirtualTryOn = async (
     const model = "gemini-2.5-flash-image-preview";
 
     const prompt = `
-Please generate a virtual try-on result.
+    Please generate a virtual try-on result.
 
-Model image: [model_image]
-Dress image: [dress_image]
+    Model image: [model_image]
+    Dress image: [dress_image]
 
 PRIMARY TASK:
 - Put the uploaded dress on the same person from the model image (keep identity).
 
 GARMENT RULES:
-1. Remove the model's original clothing, shawl/dupatta, jewelry, and accessories completely.
+    1. Remove the model's original clothing, shawl/dupatta, jewelry, and accessories completely.
 2. Use ONLY the uploaded dress image as the clothing. Do not mix features of the original outfit.
-3. Preserve the exact fabric color, texture, embroidery, and design of the dress without fading or distortion.
+    3. Preserve the exact fabric color, texture, embroidery, and design of the dress without fading or distortion.
 4. Fit the dress naturally to the body with realistic folds, shadows, and lighting.
 
 COMPOSITION / POSE / FRAMING (IMPORTANT):

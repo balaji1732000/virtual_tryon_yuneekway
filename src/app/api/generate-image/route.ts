@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { generateModelWithDress, generateVirtualTryOn, RATIO_MAP } from "@/lib/gemini";
 import { normalizeToJpeg } from "@/lib/image-normalize";
+import { getOrCreateGarmentCutout } from "@/lib/garment-cutout";
 
 function firstInlineImage(response: any): { b64: string; mimeType: string } | null {
   const parts = response?.candidates?.[0]?.content?.parts ?? [];
@@ -28,11 +29,11 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export async function POST(req: NextRequest) {
-  try {
+    try {
     const { user, supabase } = await getSupabaseAuthedClient(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const formData = await req.formData();
+        const formData = await req.formData();
     const type = (formData.get("type") as string) || ""; // 'pack' | 'tryon'
     const requestedJobId = (formData.get("jobId") as string) || null;
     const jobId = requestedJobId || randomUUID();
@@ -42,9 +43,9 @@ export async function POST(req: NextRequest) {
       const dressImage = formData.get("dressImage") as File | null;
       const additionalPrompt = (formData.get("additionalPrompt") as string) || "";
 
-      if (!modelImage || !dressImage) {
+            if (!modelImage || !dressImage) {
         return NextResponse.json({ error: "Missing images" }, { status: 400 });
-      }
+            }
 
       let modelNorm: Awaited<ReturnType<typeof normalizeToJpeg>>;
       let dressNorm: Awaited<ReturnType<typeof normalizeToJpeg>>;
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
         .single();
       if (jobOutErr) return NextResponse.json({ error: jobOutErr.message }, { status: 500 });
 
-      return NextResponse.json({
+            return NextResponse.json({
         jobId,
         outputId: jobOut?.id || null,
         storagePath: objectPath,
@@ -107,8 +108,8 @@ export async function POST(req: NextRequest) {
         image: extracted.b64, // backward-compatible
         mimeType: extracted.mimeType,
         text: response.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text,
-      });
-    }
+            });
+        }
 
     if (type === "pack") {
       const dressImage = formData.get("dressImage") as File | null;
@@ -116,6 +117,7 @@ export async function POST(req: NextRequest) {
       const angle = (formData.get("angle") as string) || "";
       const productId = (formData.get("productId") as string) || "";
       const productTitle = (formData.get("productTitle") as string) || "";
+      const useCutout = String(formData.get("useCutout") || "").toLowerCase() === "true";
       const skinTone = (formData.get("skinTone") as string) || "";
       const region = (formData.get("region") as string) || "";
       const background = (formData.get("background") as string) || "";
@@ -125,18 +127,41 @@ export async function POST(req: NextRequest) {
 
       if (!dressImage) return NextResponse.json({ error: "Missing dress image" }, { status: 400 });
 
-      let dressNorm: Awaited<ReturnType<typeof normalizeToJpeg>>;
       let referenceBase64: string | undefined;
+      let referenceNorm: Awaited<ReturnType<typeof normalizeToJpeg>> | null = null;
       try {
-        dressNorm = await normalizeToJpeg(dressImage);
-        referenceBase64 = referenceImage ? (await normalizeToJpeg(referenceImage)).buffer.toString("base64") : undefined;
+        referenceNorm = referenceImage ? await normalizeToJpeg(referenceImage) : null;
+        referenceBase64 = referenceNorm ? referenceNorm.buffer.toString("base64") : undefined;
       } catch (e: any) {
         return NextResponse.json({ error: e?.message || "Unable to process input image" }, { status: 400 });
       }
-      const dressBase64 = dressNorm.buffer.toString("base64");
+
+      const garmentView = angle.toLowerCase().includes("back") ? ("back" as const) : ("front" as const);
+      let dressBase64: string;
+      let dressMimeType: string;
+      let cutoutMeta: { bucket: string; path: string; hash: string } | null = null;
+
+      try {
+        if (useCutout) {
+          const cut = await getOrCreateGarmentCutout({ supabase, userId: user.id, kind: garmentView, image: dressImage });
+          dressBase64 = cut.b64;
+          dressMimeType = cut.mimeType;
+          cutoutMeta = { bucket: cut.bucket, path: cut.path, hash: cut.sourceHash };
+        } else {
+          const dressNorm = await normalizeToJpeg(dressImage);
+          dressBase64 = dressNorm.buffer.toString("base64");
+          dressMimeType = "image/jpeg";
+        }
+      } catch (e: any) {
+        return NextResponse.json({ error: e?.message || "Failed to create garment cutout" }, { status: 400 });
+      }
 
       const response = await withRetry(() =>
-        generateModelWithDress(dressBase64, angle, skinTone, region, background, referenceBase64, additionalPrompt, gender, aspectRatio)
+        generateModelWithDress(dressBase64, angle, skinTone, region, background, referenceBase64, additionalPrompt, gender, aspectRatio, {
+          garmentMimeType: dressMimeType,
+          referenceMimeType: "image/jpeg",
+          garmentView,
+        })
       );
 
       const extracted = firstInlineImage(response);
@@ -165,10 +190,21 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             type: "product_pack",
             status: "running",
-            input_json: { productId, productTitle, skinTone, region, background, gender, aspectRatio, additionalPrompt },
+            input_json: {
+              productId,
+              productTitle,
+                skinTone,
+                region,
+                background,
+              gender,
+              aspectRatio,
+                additionalPrompt,
+              useCutout,
+              ...(cutoutMeta ? { [`cutout_${garmentView}`]: cutoutMeta } : {}),
+            },
           },
           { onConflict: "id" }
-        );
+            );
 
       const { data: jobOut, error: jobOutErr } = await supabase
         .from("job_outputs")
@@ -185,7 +221,7 @@ export async function POST(req: NextRequest) {
         .single();
       if (jobOutErr) return NextResponse.json({ error: jobOutErr.message }, { status: 500 });
 
-      return NextResponse.json({
+            return NextResponse.json({
         jobId,
         outputId: jobOut?.id || null,
         storagePath: objectPath,
@@ -193,11 +229,11 @@ export async function POST(req: NextRequest) {
         image: extracted.b64, // backward-compatible
         mimeType: extracted.mimeType,
         text: response.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text,
-      });
-    }
+            });
+        }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
-  } catch (error: any) {
+    } catch (error: any) {
     console.error("Generation error:", error);
     let msg = error?.message || "Unknown error";
     try {
@@ -217,5 +253,5 @@ export async function POST(req: NextRequest) {
 
     const status = msg.includes("Unable to process input image") || msg.includes("INVALID_ARGUMENT") ? 400 : 500;
     return NextResponse.json({ error: msg }, { status });
-  }
+    }
 }
