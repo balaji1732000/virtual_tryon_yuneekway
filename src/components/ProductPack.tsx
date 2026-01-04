@@ -16,6 +16,8 @@ export default function ProductPack() {
     const [backImage, setBackImage] = useState<File | null>(null);
     const [selectedAngles, setSelectedAngles] = useState<string[]>(["Front", "Back"]);
     const [ratio, setRatio] = useState("1:1 (Square)");
+    const [useCutout, setUseCutout] = useState(false);
+    const [additionalPrompt, setAdditionalPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [results, setResults] = useState<{ angle: string; image: string; storagePath?: string; outputId?: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,8 @@ export default function ProductPack() {
                 formData.append('angle', angle);
                 formData.append('productId', productId);
                 if (title) formData.append('productTitle', title);
+                    formData.append('useCutout', String(useCutout));
+                    if (additionalPrompt.trim()) formData.append('additionalPrompt', additionalPrompt.trim());
                 formData.append('skinTone', activeProfile.skinTone);
                 formData.append('region', activeProfile.region);
                 formData.append('background', activeProfile.background);
@@ -104,8 +108,15 @@ export default function ProductPack() {
                 formData.append('dressImage', garmentToUse);
 
                 if (activeProfile.referenceImage) {
-                    // Convert base64 to blob
-                    const res = await fetch(activeProfile.referenceImage);
+                    // Fetch reference image (signed URL). If it expired, it may return HTML/JSON which breaks sharp.
+                    const res = await fetch(activeProfile.referenceImage, { cache: "no-store" });
+                    if (!res.ok) {
+                        throw new Error("Your model profile reference image link expired. Click Refresh and reselect the profile, then retry.");
+                    }
+                    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+                    if (!contentType.startsWith("image/")) {
+                        throw new Error("Your model profile reference image link expired (not an image). Click Refresh and reselect the profile, then retry.");
+                    }
                     const blob = await res.blob();
                     formData.append('referenceImage', blob, 'reference.jpg');
                 }
@@ -174,25 +185,25 @@ export default function ProductPack() {
                         <div className="grid grid-cols-1 gap-3">
                             <div className="space-y-1">
                                 <label className="text-sm font-medium opacity-70">Product ID (SKU)</label>
-                                <input
-                                    type="text"
-                                    value={productId}
-                                    onChange={e => setProductId(e.target.value)}
-                                    placeholder="e.g. SKU123"
+                            <input
+                                type="text"
+                                value={productId}
+                                onChange={e => setProductId(e.target.value)}
+                                placeholder="e.g. SKU123"
                                     className="w-full input-field text-sm"
-                                />
-                            </div>
+                            />
+                        </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium opacity-70">Title</label>
-                                <input
-                                    type="text"
-                                    value={title}
-                                    onChange={e => setTitle(e.target.value)}
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={e => setTitle(e.target.value)}
                                     placeholder="Optional"
                                     className="w-full input-field text-sm"
-                                />
-                            </div>
+                            />
                         </div>
+                    </div>
 
                         <div className="grid grid-cols-1 gap-3">
                             <div className="space-y-1">
@@ -212,22 +223,22 @@ export default function ProductPack() {
                     <CardBody className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium opacity-70">Angles to render</label>
-                            <div className="flex flex-wrap gap-2">
-                                {ANGLES.map(angle => (
-                                    <button
-                                        key={angle}
-                                        onClick={() => handleToggleAngle(angle)}
+                        <div className="flex flex-wrap gap-2">
+                            {ANGLES.map(angle => (
+                                <button
+                                    key={angle}
+                                    onClick={() => handleToggleAngle(angle)}
                                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                                             selectedAngles.includes(angle)
                                                 ? "bg-[color:var(--sp-primary)] text-[color:var(--sp-primary-text)] border-[color:var(--sp-primary)]"
                                                 : "bg-[color:var(--sp-panel)] text-[color:var(--sp-text)] border-[color:var(--sp-border)] hover:bg-[color:var(--sp-hover)]"
-                                            }`}
-                                    >
-                                        {angle}
-                                    </button>
-                                ))}
-                            </div>
+                                        }`}
+                                >
+                                    {angle}
+                                </button>
+                            ))}
                         </div>
+                    </div>
 
                         <div className="space-y-1">
                             <label className="text-sm font-medium opacity-70">Aspect ratio</label>
@@ -236,32 +247,61 @@ export default function ProductPack() {
                                 onChange={e => setRatio(e.target.value)}
                                 className="w-full input-field text-sm"
                             >
-                                {RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
+                            {RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    </div>
+
+                        <label className="flex items-start gap-2 text-sm text-[color:var(--sp-text)]">
+                            <input
+                                type="checkbox"
+                                checked={useCutout}
+                                onChange={(e) => setUseCutout(e.target.checked)}
+                                className="mt-1"
+                            />
+                            <span>
+                                <span className="font-medium">Use cutout (better fit)</span>
+                                <span className="block text-xs opacity-70">
+                                    Removes background from garment image before generating to reduce stretching. Slower and may cost more.
+                                </span>
+                            </span>
+                        </label>
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium opacity-70">Additional instructions (optional)</label>
+                            <textarea
+                                value={additionalPrompt}
+                                onChange={(e) => setAdditionalPrompt(e.target.value)}
+                                placeholder="e.g., full body, arms at side, studio lighting, center subject, no accessories…"
+                                className="w-full input-field text-sm"
+                                rows={3}
+                            />
+                            <div className="text-xs text-[color:var(--sp-muted)]">
+                                Applied to all selected angles for this generation.
+                            </div>
                         </div>
 
-                        <button
-                            onClick={handleGenerate}
-                            disabled={isGenerating || !activeProfile}
-                            className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isGenerating ? (
-                                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleGenerate}
+                        disabled={isGenerating || !activeProfile}
+                        className="w-full btn-primary flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isGenerating ? (
+                            <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 spinner-primary rounded-full animate-spin" />
                                     Generating…
-                                </div>
-                            ) : (
-                                <>
-                                    <Play size={18} /> Generate set
-                                </>
-                            )}
-                        </button>
-
-                        {error && (
-                            <div className="alert-error text-xs flex items-center gap-2">
-                                <AlertCircle size={14} /> {error}
                             </div>
+                        ) : (
+                            <>
+                                    <Play size={18} /> Generate set
+                            </>
                         )}
+                    </button>
+
+                    {error && (
+                            <div className="alert-error text-xs flex items-center gap-2">
+                            <AlertCircle size={14} /> {error}
+                        </div>
+                    )}
                     </CardBody>
                 </Card>
 
@@ -277,7 +317,7 @@ export default function ProductPack() {
                     />
                     <CardBody>
                         <div className="grid grid-cols-2 gap-3 max-h-[520px] overflow-y-auto pr-1">
-                            {results.map((res, i) => (
+                        {results.map((res, i) => (
                                 <div key={i} className="group">
                                     <a href={res.image} target="_blank" rel="noreferrer" className="block">
                                         <div className="aspect-[3/4] rounded-xl overflow-hidden border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)]">
@@ -295,22 +335,22 @@ export default function ProductPack() {
                                             </a>
                                         )}
                                     </div>
-                                </div>
-                            ))}
+                            </div>
+                        ))}
 
-                            {isGenerating && results.length < selectedAngles.length && (
+                        {isGenerating && results.length < selectedAngles.length && (
                                 <div className="aspect-[3/4] rounded-xl border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center">
                                     <div className="w-6 h-6 spinner-muted rounded-full animate-spin" />
-                                </div>
-                            )}
+                            </div>
+                        )}
 
-                            {results.length === 0 && !isGenerating && (
+                        {results.length === 0 && !isGenerating && (
                                 <div className="col-span-2 aspect-[3/2] rounded-xl border border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex flex-col items-center justify-center text-[color:var(--sp-muted)]">
                                     <ImageIcon size={42} className="mb-2" />
                                     <div className="text-sm">Renders will appear here</div>
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
+                    </div>
                     </CardBody>
                 </Card>
             </div>

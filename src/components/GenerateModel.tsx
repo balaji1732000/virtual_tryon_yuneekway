@@ -20,6 +20,7 @@ export default function GenerateModel() {
     const [skinTone, setSkinTone] = useState("Medium");
     const [region, setRegion] = useState("Europe");
     const [angle, setAngle] = useState("Front");
+    const [additionalPrompt, setAdditionalPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [resultPath, setResultPath] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export default function GenerateModel() {
             formData.append('angle', angle);
             formData.append('background', 'Studio Grey');
             formData.append('aspectRatio', '1:1 (Square)');
+            if (additionalPrompt.trim()) formData.append('additionalPrompt', additionalPrompt.trim());
 
             const response = await fetch('/api/generate-image', {
                 method: 'POST',
@@ -137,6 +139,20 @@ export default function GenerateModel() {
                                 <select value={angle} onChange={e => setAngle(e.target.value)} className="w-full input-field text-sm">
                                     {ANGLES.map(a => <option key={a} value={a}>{a}</option>)}
                                 </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium opacity-70">Additional instructions (optional)</label>
+                            <textarea
+                                value={additionalPrompt}
+                                onChange={(e) => setAdditionalPrompt(e.target.value)}
+                                placeholder="e.g., full body, straight pose, studio lighting, center subject, no accessories…"
+                                className="w-full input-field text-sm"
+                                rows={3}
+                            />
+                            <div className="text-xs text-[color:var(--sp-muted)]">
+                                Helps the model follow your pose/framing/lighting preferences.
                             </div>
                         </div>
 
