@@ -13,12 +13,13 @@ function extFromName(name: string) {
   return idx >= 0 ? lower.slice(idx + 1) : "";
 }
 
-export async function normalizeToJpeg(file: File, opts?: { maxSide?: number; quality?: number }): Promise<NormalizedImage> {
+export async function normalizeBufferToJpeg(
+  input: Buffer,
+  opts?: { maxSide?: number; quality?: number }
+): Promise<NormalizedImage> {
   // Gemini image endpoints can be picky; keep uploads reasonably small.
   const maxSide = opts?.maxSide ?? 1024;
   const quality = opts?.quality ?? 82;
-
-  const input = Buffer.from(await file.arrayBuffer());
 
   try {
     const base = sharp(input, { failOnError: false }).rotate();
@@ -51,6 +52,15 @@ export async function normalizeToJpeg(file: File, opts?: { maxSide?: number; qua
 
     if (last) return { buffer: last, mimeType: "image/jpeg", width: meta.width, height: meta.height };
     throw new Error("Unable to process input image");
+  } catch (e: any) {
+    throw new Error(e?.message || "Unable to process input image");
+  }
+}
+
+export async function normalizeToJpeg(file: File, opts?: { maxSide?: number; quality?: number }): Promise<NormalizedImage> {
+  const input = Buffer.from(await file.arrayBuffer());
+  try {
+    return await normalizeBufferToJpeg(input, opts);
   } catch (e: any) {
     const ext = extFromName(file.name || "");
     const type = (file.type || "").toLowerCase();

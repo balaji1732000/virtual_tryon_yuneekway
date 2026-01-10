@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { generateModelWithDress, generateVirtualTryOn, RATIO_MAP } from "@/lib/gemini";
-import { normalizeToJpeg } from "@/lib/image-normalize";
+import { normalizeBufferToJpeg, normalizeToJpeg } from "@/lib/image-normalize";
 import { getOrCreateGarmentCutout } from "@/lib/garment-cutout";
 
 function firstInlineImage(response: any): { b64: string; mimeType: string } | null {
@@ -11,6 +11,8 @@ function firstInlineImage(response: any): { b64: string; mimeType: string } | nu
   if (!imagePart?.inlineData?.data) return null;
   return { b64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType || "image/png" };
 }
+
+type StorageRef = { bucket: string; path: string };
 
 function isGeminiInvalidImageError(e: any) {
   const msg = String(e?.message || "");
@@ -28,30 +30,47 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+async function downloadRefToBuffer(supabase: any, ref: StorageRef): Promise<Buffer> {
+  const dl = await supabase.storage.from(ref.bucket).download(ref.path);
+  if (dl.error || !dl.data) throw new Error(dl.error?.message || "Failed to download input image");
+  const ab = await dl.data.arrayBuffer();
+  return Buffer.from(ab);
+}
+
 export async function POST(req: NextRequest) {
     try {
     const { user, supabase } = await getSupabaseAuthedClient(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const formData = await req.formData();
-    const type = (formData.get("type") as string) || ""; // 'pack' | 'tryon'
-    const requestedJobId = (formData.get("jobId") as string) || null;
+    const contentType = (req.headers.get("content-type") || "").toLowerCase();
+    const isJson = contentType.includes("application/json");
+    const body = isJson ? await req.json().catch(() => null) : null;
+    const formData = isJson ? null : await req.formData();
+
+    const getField = (key: string) => (isJson ? (body as any)?.[key] : (formData as any).get(key));
+
+    const type = String(getField("type") || ""); // 'pack' | 'tryon'
+    const requestedJobId = (getField("jobId") as string) || null;
     const jobId = requestedJobId || randomUUID();
 
     if (type === "tryon") {
-      const modelImage = formData.get("modelImage") as File | null;
-      const dressImage = formData.get("dressImage") as File | null;
-      const additionalPrompt = (formData.get("additionalPrompt") as string) || "";
+      const additionalPrompt = (getField("additionalPrompt") as string) || "";
+      const modelRef = (isJson ? (body as any)?.modelRef : null) as StorageRef | null;
+      const dressRef = (isJson ? (body as any)?.dressRef : null) as StorageRef | null;
+      const modelImage = isJson ? null : ((formData as any).get("modelImage") as File | null);
+      const dressImage = isJson ? null : ((formData as any).get("dressImage") as File | null);
 
-            if (!modelImage || !dressImage) {
+      if ((!modelImage && !modelRef) || (!dressImage && !dressRef)) {
         return NextResponse.json({ error: "Missing images" }, { status: 400 });
-            }
+      }
 
-      let modelNorm: Awaited<ReturnType<typeof normalizeToJpeg>>;
-      let dressNorm: Awaited<ReturnType<typeof normalizeToJpeg>>;
+      let modelNorm: Awaited<ReturnType<typeof normalizeBufferToJpeg>>;
+      let dressNorm: Awaited<ReturnType<typeof normalizeBufferToJpeg>>;
       try {
-        modelNorm = await normalizeToJpeg(modelImage);
-        dressNorm = await normalizeToJpeg(dressImage);
+        const modelBuf = modelImage ? Buffer.from(await modelImage.arrayBuffer()) : await downloadRefToBuffer(supabase, modelRef as any);
+        const dressBuf = dressImage ? Buffer.from(await dressImage.arrayBuffer()) : await downloadRefToBuffer(supabase, dressRef as any);
+        modelNorm = await normalizeBufferToJpeg(modelBuf);
+        dressNorm = await normalizeBufferToJpeg(dressBuf);
       } catch (e: any) {
         return NextResponse.json({ error: e?.message || "Unable to process input image" }, { status: 400 });
       }
@@ -112,26 +131,35 @@ export async function POST(req: NextRequest) {
         }
 
     if (type === "pack") {
-      const dressImage = formData.get("dressImage") as File | null;
-      const referenceImage = formData.get("referenceImage") as File | null;
-      const angle = (formData.get("angle") as string) || "";
-      const productId = (formData.get("productId") as string) || "";
-      const productTitle = (formData.get("productTitle") as string) || "";
-      const useCutout = String(formData.get("useCutout") || "").toLowerCase() === "true";
-      const skinTone = (formData.get("skinTone") as string) || "";
-      const region = (formData.get("region") as string) || "";
-      const background = (formData.get("background") as string) || "";
-      const gender = (formData.get("gender") as string) || "Female";
-      const aspectRatio = (formData.get("aspectRatio") as string) || "1:1 (Square)";
-      const additionalPrompt = (formData.get("additionalPrompt") as string) || "";
+      const angle = String(getField("angle") || "");
+      const productId = String(getField("productId") || "");
+      const productTitle = String(getField("productTitle") || "");
+      const useCutout = String(getField("useCutout") || "").toLowerCase() === "true";
+      const skinTone = String(getField("skinTone") || "");
+      const region = String(getField("region") || "");
+      const background = String(getField("background") || "");
+      const gender = String(getField("gender") || "Female");
+      const aspectRatio = String(getField("aspectRatio") || "1:1 (Square)");
+      const additionalPrompt = String(getField("additionalPrompt") || "");
 
-      if (!dressImage) return NextResponse.json({ error: "Missing dress image" }, { status: 400 });
+      const dressRef = (isJson ? (body as any)?.dressRef : null) as StorageRef | null;
+      const referenceRef = (isJson ? (body as any)?.referenceRef : null) as StorageRef | null;
+      const dressImage = isJson ? null : ((formData as any).get("dressImage") as File | null);
+      const referenceImage = isJson ? null : ((formData as any).get("referenceImage") as File | null);
+
+      if (!dressImage && !dressRef) return NextResponse.json({ error: "Missing dress image" }, { status: 400 });
 
       let referenceBase64: string | undefined;
       let referenceNorm: Awaited<ReturnType<typeof normalizeToJpeg>> | null = null;
       try {
-        referenceNorm = referenceImage ? await normalizeToJpeg(referenceImage) : null;
-        referenceBase64 = referenceNorm ? referenceNorm.buffer.toString("base64") : undefined;
+        if (referenceImage) {
+          referenceNorm = await normalizeToJpeg(referenceImage);
+          referenceBase64 = referenceNorm.buffer.toString("base64");
+        } else if (referenceRef) {
+          const refBuf = await downloadRefToBuffer(supabase, referenceRef);
+          const refNorm = await normalizeBufferToJpeg(refBuf);
+          referenceBase64 = refNorm.buffer.toString("base64");
+        }
       } catch (e: any) {
         const msg = String(e?.message || "");
         if (msg.toLowerCase().includes("unsupported image format")) {
@@ -152,13 +180,14 @@ export async function POST(req: NextRequest) {
       let cutoutMeta: { bucket: string; path: string; hash: string } | null = null;
 
       try {
+        const dressBuf = dressImage ? Buffer.from(await dressImage.arrayBuffer()) : await downloadRefToBuffer(supabase, dressRef as any);
         if (useCutout) {
-          const cut = await getOrCreateGarmentCutout({ supabase, userId: user.id, kind: garmentView, image: dressImage });
+          const cut = await getOrCreateGarmentCutout({ supabase, userId: user.id, kind: garmentView, image: dressBuf });
           dressBase64 = cut.b64;
           dressMimeType = cut.mimeType;
           cutoutMeta = { bucket: cut.bucket, path: cut.path, hash: cut.sourceHash };
         } else {
-          const dressNorm = await normalizeToJpeg(dressImage);
+          const dressNorm = await normalizeBufferToJpeg(dressBuf);
           dressBase64 = dressNorm.buffer.toString("base64");
           dressMimeType = "image/jpeg";
         }

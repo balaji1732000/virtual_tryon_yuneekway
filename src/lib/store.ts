@@ -4,7 +4,10 @@ import { persist } from 'zustand/middleware';
 export interface ModelProfile {
     id: string;
     name: string;
-    referenceImage?: string; // Base64
+    // Short-lived signed URL for display (may expire)
+    referenceImage?: string;
+    // Storage path for the profile image (stable; preferred for server-side usage)
+    referenceImagePath?: string;
     skinTone: string;
     region: string;
     gender: string;

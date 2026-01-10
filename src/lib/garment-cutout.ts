@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getGeminiClient } from "@/lib/gemini";
-import { normalizeToJpeg } from "@/lib/image-normalize";
+import { normalizeBufferToJpeg, normalizeToJpeg } from "@/lib/image-normalize";
 
 function extractInlineImage(response: any): { b64: string; mimeType: string } | null {
   const parts = response?.candidates?.[0]?.content?.parts ?? [];
@@ -25,10 +25,10 @@ export async function getOrCreateGarmentCutout(args: {
   supabase: SupabaseClient;
   userId: string;
   kind: "front" | "back";
-  image: File;
+  image: File | Buffer;
 }) {
   // Normalize first: stable hashing + Gemini input safety.
-  const norm = await normalizeToJpeg(args.image);
+  const norm = Buffer.isBuffer(args.image) ? await normalizeBufferToJpeg(args.image) : await normalizeToJpeg(args.image);
   const hash = sha256Hex(norm.buffer);
 
   // Cache lookup

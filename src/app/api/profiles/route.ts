@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
     (data || []).map(async (p: any) => {
       let referenceImageUrl: string | null = null;
       if (p.reference_image_path) {
-        const signed = await supabase.storage.from("profiles").createSignedUrl(p.reference_image_path, 60 * 60);
+        // Longer-lived signed URL for display; generation should use the path (not the URL).
+        const signed = await supabase.storage.from("profiles").createSignedUrl(p.reference_image_path, 60 * 60 * 24);
         if (!signed.error) referenceImageUrl = signed.data.signedUrl;
       }
       return {
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
 
-  const signed = await supabase.storage.from("profiles").createSignedUrl(objectPath, 60 * 60);
+  const signed = await supabase.storage.from("profiles").createSignedUrl(objectPath, 60 * 60 * 24);
 
   return NextResponse.json({
     profile: {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UserPlus, Download, AlertCircle, Image as ImageIcon, Upload } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const REGIONS = [
     "South Asia", "East Asia", "Europe", "Middle East & North Africa",
@@ -51,23 +52,48 @@ export default function GenerateModel() {
         setResultOutputId(null);
 
         try {
-            const formData = new FormData();
-            formData.append('type', 'pack'); // Use 'pack' type but without reference image
-            formData.append('dressImage', dressImage);
-            formData.append('gender', gender);
-            formData.append('skinTone', skinTone);
-            formData.append('region', region);
-            formData.append('angle', angle);
-            formData.append('background', 'Studio Grey');
-            formData.append('aspectRatio', '1:1 (Square)');
-            if (additionalPrompt.trim()) formData.append('additionalPrompt', additionalPrompt.trim());
+            const supabase = createSupabaseBrowserClient();
+            const {
+                data: { user },
+                error: userErr
+            } = await supabase.auth.getUser();
+            if (userErr || !user) throw new Error("Not authenticated");
+
+            const ext = (dressImage.type || "").includes("png") ? "png" : "jpg";
+            const id =
+                (globalThis.crypto && "randomUUID" in globalThis.crypto) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
+            const objectPath = `${user.id}/${id}_model_generator_garment.${ext}`;
+            const up = await supabase.storage.from("uploads").upload(objectPath, dressImage, {
+                contentType: dressImage.type || "image/jpeg",
+                upsert: true,
+            });
+            if (up.error) throw new Error(up.error.message);
+
+            const jobId =
+                (globalThis.crypto && "randomUUID" in globalThis.crypto) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
 
             const response = await fetch('/api/generate-image', {
                 method: 'POST',
-                body: formData,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'pack',
+                    jobId,
+                    angle,
+                    productId: "",
+                    productTitle: "",
+                    useCutout: false,
+                    additionalPrompt: additionalPrompt.trim(),
+                    gender,
+                    skinTone,
+                    region,
+                    background: 'Studio Grey',
+                    aspectRatio: '1:1 (Square)',
+                    dressRef: { bucket: "uploads", path: objectPath },
+                }),
             });
 
-            const data = await response.json();
+            const ct = (response.headers.get("content-type") || "").toLowerCase();
+            const data = ct.includes("application/json") ? await response.json() : { error: await response.text() };
             if (!response.ok) throw new Error(data?.error || "Generation failed");
 
             setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);
