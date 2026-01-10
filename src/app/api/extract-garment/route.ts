@@ -47,7 +47,7 @@ Return ONLY the final cutout image.
 
     const client = getGeminiClient();
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash-image-preview",
+      model: "gemini-2.5-flash-image",
       contents: [
         {
           role: "user",

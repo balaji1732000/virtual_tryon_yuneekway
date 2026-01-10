@@ -41,7 +41,7 @@ export const generateModelWithDress = async (
     aspectRatioStr: string = "1:1",
     opts?: { garmentMimeType?: string; referenceMimeType?: string; garmentView?: "front" | "back" }
 ) => {
-    const model = "gemini-2.5-flash-image-preview";
+    const model = "gemini-2.5-flash-image";
     const garmentMimeType = opts?.garmentMimeType || "image/jpeg";
     const referenceMimeType = opts?.referenceMimeType || "image/jpeg";
     const garmentView = opts?.garmentView || "front";
@@ -152,7 +152,7 @@ export const generateVirtualTryOn = async (
     dressImageBase64: string,
     additionalPrompt: string = ""
 ) => {
-    const model = "gemini-2.5-flash-image-preview";
+    const model = "gemini-2.5-flash-image";
 
     const prompt = `
     Please generate a virtual try-on result.
@@ -247,7 +247,7 @@ export async function editImageWithMask(args: {
     invert?: boolean;
     feather?: number;
 }) {
-    const model = "gemini-2.5-flash-image-preview";
+    const model = "gemini-2.5-flash-image";
 
     const invertText = args.invert
         ? "INVERT MODE: The mask indicates PROTECTED region; edit everything else."

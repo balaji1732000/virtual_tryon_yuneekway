@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Play, Download, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
 
@@ -62,6 +63,7 @@ export default function ProductPack() {
             region: p.region,
             background: p.background,
             referenceImage: p.referenceImageUrl || undefined,
+            referenceImagePath: p.referenceImagePath || undefined,
         });
     };
 
@@ -70,6 +72,27 @@ export default function ProductPack() {
             prev.includes(angle) ? prev.filter(a => a !== angle) : [...prev, angle]
         );
     };
+
+    async function parseJsonOrText(res: Response) {
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) return await res.json();
+        const text = await res.text();
+        return { error: text || `Request failed (${res.status})` };
+    }
+
+    async function uploadToUserUploads(file: File, userId: string, kind: string) {
+        const supabase = createSupabaseBrowserClient();
+        const ext = (file.type || "").includes("png") ? "png" : "jpg";
+        const id =
+            (globalThis.crypto && "randomUUID" in globalThis.crypto) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
+        const objectPath = `${userId}/${id}_${kind}.${ext}`;
+        const up = await supabase.storage.from("uploads").upload(objectPath, file, {
+            contentType: file.type || "image/jpeg",
+            upsert: true,
+        });
+        if (up.error) throw new Error(up.error.message);
+        return { bucket: "uploads", path: objectPath };
+    }
 
     const handleGenerate = async () => {
         if (!activeProfile) {
@@ -88,46 +111,47 @@ export default function ProductPack() {
         setJobId(newJobId);
 
         try {
+            const supabase = createSupabaseBrowserClient();
+            const {
+                data: { user },
+                error: userErr
+            } = await supabase.auth.getUser();
+            if (userErr || !user) throw new Error("Not authenticated");
+
+            // Upload garment images directly to Supabase Storage to avoid Vercel 413 limits.
+            const frontRef = await uploadToUserUploads(frontImage, user.id, "garment_front");
+            const backRef = backImage ? await uploadToUserUploads(backImage, user.id, "garment_back") : null;
+
             for (const angle of selectedAngles) {
-                const formData = new FormData();
-                formData.append('type', 'pack');
-                formData.append('jobId', newJobId);
-                formData.append('angle', angle);
-                formData.append('productId', productId);
-                if (title) formData.append('productTitle', title);
-                    formData.append('useCutout', String(useCutout));
-                    if (additionalPrompt.trim()) formData.append('additionalPrompt', additionalPrompt.trim());
-                formData.append('skinTone', activeProfile.skinTone);
-                formData.append('region', activeProfile.region);
-                formData.append('background', activeProfile.background);
-                formData.append('gender', activeProfile.gender);
-                formData.append('aspectRatio', ratio);
-
-                // Use back image for back angle if available, otherwise front
-                const garmentToUse = (angle.toLowerCase().includes('back') && backImage) ? backImage : frontImage;
-                formData.append('dressImage', garmentToUse);
-
-                if (activeProfile.referenceImage) {
-                    // Fetch reference image (signed URL). If it expired, it may return HTML/JSON which breaks sharp.
-                    const res = await fetch(activeProfile.referenceImage, { cache: "no-store" });
-                    if (!res.ok) {
-                        throw new Error("Your model profile reference image link expired. Click Refresh and reselect the profile, then retry.");
-                    }
-                    const contentType = (res.headers.get("content-type") || "").toLowerCase();
-                    if (!contentType.startsWith("image/")) {
-                        throw new Error("Your model profile reference image link expired (not an image). Click Refresh and reselect the profile, then retry.");
-                    }
-                    const blob = await res.blob();
-                    formData.append('referenceImage', blob, 'reference.jpg');
-                }
+                const useBack = angle.toLowerCase().includes("back") && backRef;
+                const dressRef = useBack ? backRef : frontRef;
+                const referenceRef = activeProfile.referenceImagePath
+                    ? { bucket: "profiles", path: activeProfile.referenceImagePath }
+                    : null;
 
                 const response = await fetch('/api/generate-image', {
                     method: 'POST',
-                    body: formData,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'pack',
+                        jobId: newJobId,
+                        angle,
+                        productId,
+                        productTitle: title || "",
+                        useCutout,
+                        additionalPrompt: additionalPrompt.trim(),
+                        skinTone: activeProfile.skinTone,
+                        region: activeProfile.region,
+                        background: activeProfile.background,
+                        gender: activeProfile.gender,
+                        aspectRatio: ratio,
+                        dressRef,
+                        referenceRef,
+                    }),
                 });
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error);
+                const data = await parseJsonOrText(response);
+                if (data?.error) throw new Error(data.error);
 
                 const img = data.signedUrl || `data:${data.mimeType};base64,${data.image}`;
                 setResults(prev => [...prev, { angle, image: img, storagePath: data.storagePath, outputId: data.outputId }]);

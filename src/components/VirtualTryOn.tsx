@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Upload, RefreshCw, Play, Download, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function VirtualTryOn() {
     const [modelImage, setModelImage] = useState<File | null>(null);
@@ -45,18 +46,51 @@ export default function VirtualTryOn() {
         setResultJobId(null);
 
         try {
-            const formData = new FormData();
-            formData.append('type', 'tryon');
-            formData.append('modelImage', modelImage);
-            formData.append('dressImage', dressImage);
-            formData.append('additionalPrompt', additionalPrompt);
+            const supabase = createSupabaseBrowserClient();
+            const {
+                data: { user },
+                error: userErr
+            } = await supabase.auth.getUser();
+            if (userErr || !user) throw new Error("Not authenticated");
+
+            const id =
+                (globalThis.crypto && "randomUUID" in globalThis.crypto) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
+
+            const modelExt = (modelImage.type || "").includes("png") ? "png" : "jpg";
+            const dressExt = (dressImage.type || "").includes("png") ? "png" : "jpg";
+
+            const modelPath = `${user.id}/${id}_tryon_model.${modelExt}`;
+            const dressPath = `${user.id}/${id}_tryon_garment.${dressExt}`;
+
+            const up1 = await supabase.storage.from("uploads").upload(modelPath, modelImage, {
+                contentType: modelImage.type || "image/jpeg",
+                upsert: true,
+            });
+            if (up1.error) throw new Error(up1.error.message);
+
+            const up2 = await supabase.storage.from("uploads").upload(dressPath, dressImage, {
+                contentType: dressImage.type || "image/jpeg",
+                upsert: true,
+            });
+            if (up2.error) throw new Error(up2.error.message);
+
+            const jobId =
+                (globalThis.crypto && "randomUUID" in globalThis.crypto) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
 
             const response = await fetch('/api/generate-image', {
                 method: 'POST',
-                body: formData,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'tryon',
+                    jobId,
+                    additionalPrompt: additionalPrompt.trim(),
+                    modelRef: { bucket: "uploads", path: modelPath },
+                    dressRef: { bucket: "uploads", path: dressPath },
+                }),
             });
 
-            const data = await response.json();
+            const ct = (response.headers.get("content-type") || "").toLowerCase();
+            const data = ct.includes("application/json") ? await response.json() : { error: await response.text() };
             if (!response.ok) throw new Error(data?.error || "Generation failed");
 
             setResult(data.signedUrl || `data:${data.mimeType};base64,${data.image}`);

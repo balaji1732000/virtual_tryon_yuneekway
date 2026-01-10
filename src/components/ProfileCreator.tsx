@@ -83,6 +83,7 @@ export default function ProfileCreator() {
             region: p.region,
             background: p.background,
             referenceImage: p.referenceImageUrl || undefined,
+            referenceImagePath: p.referenceImagePath || undefined,
         });
         setName(p.name);
         setGender(p.gender);
