@@ -12,7 +12,8 @@ const REGIONS = [
 ];
 const SKIN_TONES = ["Light", "Fair", "Medium", "Olive", "Tan", "Brown", "Dark"];
 const GENDERS = ["Female", "Male"];
-const ANGLES = ["Front", "Back", "Left-Side", "Right-Side", "Three-quarter", "Full body"];
+const ANGLES = ["Front", "Back", "Left-Side", "Right-Side", "Full body"];
+const GARMENT_TYPES = ["Top", "Bottom", "One-Piece"] as const;
 
 export default function GenerateModel() {
     const [dressImage, setDressImage] = useState<File | null>(null);
@@ -21,7 +22,9 @@ export default function GenerateModel() {
     const [skinTone, setSkinTone] = useState("Medium");
     const [region, setRegion] = useState("Europe");
     const [angle, setAngle] = useState("Front");
+    const [garmentType, setGarmentType] = useState<typeof GARMENT_TYPES[number]>("Top");
     const [additionalPrompt, setAdditionalPrompt] = useState("");
+    const [imageSize, setImageSize] = useState<"1K" | "2K" | "4K">("1K");
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [resultPath, setResultPath] = useState<string | null>(null);
@@ -87,7 +90,9 @@ export default function GenerateModel() {
                     skinTone,
                     region,
                     background: 'Studio Grey',
-                    aspectRatio: '1:1 (Square)',
+                    aspectRatio: '1:1',
+                    imageSize,
+                    garmentType,
                     dressRef: { bucket: "uploads", path: objectPath },
                 }),
             });
@@ -113,8 +118,30 @@ export default function GenerateModel() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card>
-                    <CardHeader title="Garment image" subtitle="Upload the product photo" />
+                    <CardHeader
+                        title="Garment image"
+                        subtitle={`Upload the ${garmentType === "Bottom" ? "bottom" : garmentType === "One-Piece" ? "one-piece" : "top"} photo`}
+                    />
                     <CardBody className="space-y-4">
+                        <div className="space-y-2 mb-4">
+                            <label className="text-sm font-medium opacity-70">Garment Type</label>
+                            <div className="flex bg-[color:var(--sp-panel)] p-1 rounded-lg border border-[color:var(--sp-border)]">
+                                {GARMENT_TYPES.map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setGarmentType(type)}
+                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                            garmentType === type
+                                                ? "bg-[color:var(--sp-surface)] text-[color:var(--sp-text)] shadow-sm"
+                                                : "text-[color:var(--sp-muted)] hover:text-[color:var(--sp-text)]"
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div
                             className="aspect-[3/4] rounded-2xl border border-dashed border-[color:var(--sp-border)] bg-[color:var(--sp-hover)] flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={() => document.getElementById('dress-upload-model')?.click()}
@@ -165,6 +192,22 @@ export default function GenerateModel() {
                                 <select value={angle} onChange={e => setAngle(e.target.value)} className="w-full input-field text-sm">
                                     {ANGLES.map(a => <option key={a} value={a}>{a}</option>)}
                                 </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium opacity-70">Resolution</label>
+                            <select
+                                value={imageSize}
+                                onChange={(e) => setImageSize(e.target.value as any)}
+                                className="w-full input-field text-sm"
+                            >
+                                <option value="1K">1K</option>
+                                <option value="2K">2K</option>
+                                <option value="4K">4K</option>
+                            </select>
+                            <div className="text-xs text-[color:var(--sp-muted)]">
+                                Higher resolutions are slower and cost more.
                             </div>
                         </div>
 
