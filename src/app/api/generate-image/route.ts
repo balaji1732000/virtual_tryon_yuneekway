@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
-import { generateModelWithDress, generateVirtualTryOn, RATIO_MAP } from "@/lib/gemini";
+import { expectedDims, generateModelWithDress, generateVirtualTryOn, normalizeAspectRatio, normalizeImageSize } from "@/lib/gemini";
 import { normalizeBufferToJpeg, normalizeToJpeg } from "@/lib/image-normalize";
 import { getOrCreateGarmentCutout } from "@/lib/garment-cutout";
+import sharp from "sharp";
 
 function firstInlineImage(response: any): { b64: string; mimeType: string } | null {
   const parts = response?.candidates?.[0]?.content?.parts ?? [];
@@ -55,6 +56,8 @@ export async function POST(req: NextRequest) {
 
     if (type === "tryon") {
       const additionalPrompt = (getField("additionalPrompt") as string) || "";
+      const aspectRatio = normalizeAspectRatio(getField("aspectRatio") as any);
+      const imageSize = normalizeImageSize(getField("imageSize") as any);
       const modelRef = (isJson ? (body as any)?.modelRef : null) as StorageRef | null;
       const dressRef = (isJson ? (body as any)?.dressRef : null) as StorageRef | null;
       const modelImage = isJson ? null : ((formData as any).get("modelImage") as File | null);
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
       const modelBase64 = modelNorm.buffer.toString("base64");
       const dressBase64 = dressNorm.buffer.toString("base64");
 
-      const response = await withRetry(() => generateVirtualTryOn(modelBase64, dressBase64, additionalPrompt));
+      const response = await withRetry(() => generateVirtualTryOn(modelBase64, dressBase64, additionalPrompt, aspectRatio, imageSize));
       const extracted = firstInlineImage(response);
       if (!extracted) return NextResponse.json({ error: "No image generated" }, { status: 500 });
 
@@ -102,10 +105,22 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             type: "tryon_image",
             status: "done",
-            input_json: { additionalPrompt },
+            input_json: { additionalPrompt, aspectRatio, imageSize },
           },
           { onConflict: "id" }
         );
+
+      let width: number | null = null;
+      let height: number | null = null;
+      try {
+        const meta = await sharp(outBuffer).metadata();
+        width = meta.width || null;
+        height = meta.height || null;
+      } catch {
+        const fallback = expectedDims(aspectRatio as any, imageSize as any);
+        width = fallback?.[0] || null;
+        height = fallback?.[1] || null;
+      }
 
       const { data: jobOut, error: jobOutErr } = await supabase
         .from("job_outputs")
@@ -114,6 +129,8 @@ export async function POST(req: NextRequest) {
         kind: "image",
         mime_type: extracted.mimeType,
         storage_path: objectPath,
+        width,
+        height,
         })
         .select("id")
         .single();
@@ -139,12 +156,16 @@ export async function POST(req: NextRequest) {
       const region = String(getField("region") || "");
       const background = String(getField("background") || "");
       const gender = String(getField("gender") || "Female");
-      const aspectRatio = String(getField("aspectRatio") || "1:1 (Square)");
+      const aspectRatio = normalizeAspectRatio(getField("aspectRatio") as any);
+      const imageSize = normalizeImageSize(getField("imageSize") as any);
+      const garmentType = String(getField("garmentType") || "Top");
       const additionalPrompt = String(getField("additionalPrompt") || "");
 
       const dressRef = (isJson ? (body as any)?.dressRef : null) as StorageRef | null;
+      const backDressRef = (isJson ? (body as any)?.backDressRef : null) as StorageRef | null;
       const referenceRef = (isJson ? (body as any)?.referenceRef : null) as StorageRef | null;
       const dressImage = isJson ? null : ((formData as any).get("dressImage") as File | null);
+      const backDressImage = isJson ? null : ((formData as any).get("backDressImage") as File | null);
       const referenceImage = isJson ? null : ((formData as any).get("referenceImage") as File | null);
 
       if (!dressImage && !dressRef) return NextResponse.json({ error: "Missing dress image" }, { status: 400 });
@@ -177,6 +198,7 @@ export async function POST(req: NextRequest) {
       const garmentView = angle.toLowerCase().includes("back") ? ("back" as const) : ("front" as const);
       let dressBase64: string;
       let dressMimeType: string;
+      let backDressBase64: string | undefined;
       let cutoutMeta: { bucket: string; path: string; hash: string } | null = null;
 
       try {
@@ -191,15 +213,23 @@ export async function POST(req: NextRequest) {
           dressBase64 = dressNorm.buffer.toString("base64");
           dressMimeType = "image/jpeg";
         }
+
+        if (backDressImage || backDressRef) {
+            const backBuf = backDressImage ? Buffer.from(await backDressImage.arrayBuffer()) : await downloadRefToBuffer(supabase, backDressRef as any);
+            const backNorm = await normalizeBufferToJpeg(backBuf);
+            backDressBase64 = backNorm.buffer.toString("base64");
+        }
       } catch (e: any) {
         return NextResponse.json({ error: e?.message || "Failed to create garment cutout" }, { status: 400 });
       }
 
       const response = await withRetry(() =>
-        generateModelWithDress(dressBase64, angle, skinTone, region, background, referenceBase64, additionalPrompt, gender, aspectRatio, {
+        generateModelWithDress(dressBase64, angle, skinTone, region, background, referenceBase64, additionalPrompt, gender, aspectRatio, imageSize, {
           garmentMimeType: dressMimeType,
           referenceMimeType: "image/jpeg",
           garmentView,
+          backDressBase64,
+          garmentType,
         })
       );
 
@@ -219,7 +249,17 @@ export async function POST(req: NextRequest) {
       const signed = await supabase.storage.from("outputs").createSignedUrl(objectPath, 60 * 60);
       if (signed.error) return NextResponse.json({ error: signed.error.message }, { status: 500 });
 
-      const dims = RATIO_MAP[aspectRatio];
+      let width: number | null = null;
+      let height: number | null = null;
+      try {
+        const meta = await sharp(outBuffer).metadata();
+        width = meta.width || null;
+        height = meta.height || null;
+      } catch {
+        const fallback = expectedDims(aspectRatio as any, imageSize as any);
+        width = fallback?.[0] || null;
+        height = fallback?.[1] || null;
+      }
 
       await supabase
         .from("jobs")
@@ -237,6 +277,8 @@ export async function POST(req: NextRequest) {
                 background,
               gender,
               aspectRatio,
+              imageSize,
+              garmentType,
                 additionalPrompt,
               useCutout,
               ...(cutoutMeta ? { [`cutout_${garmentView}`]: cutoutMeta } : {}),
@@ -253,8 +295,8 @@ export async function POST(req: NextRequest) {
         angle,
         mime_type: extracted.mimeType,
         storage_path: objectPath,
-        width: dims?.[0],
-        height: dims?.[1],
+        width,
+        height,
         })
         .select("id")
         .single();

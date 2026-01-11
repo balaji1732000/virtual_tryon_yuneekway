@@ -6,8 +6,23 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Play, Download, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
 
-const ANGLES = ["Front", "Back", "Left-Side", "Right-Side", "Three-quarter", "Full body"];
-const RATIOS = ["1:1 (Square)", "2:3 (Portrait)", "3:2 (Landscape)", "4:5 (Portrait)", "9:16 (Vertical)"];
+const ANGLES = ["Front", "Back", "Left-Side", "Right-Side", "Full body"];
+const ASPECT_RATIOS: { value: string; label: string }[] = [
+    { value: "1:1", label: "1:1 (Square)" },
+    { value: "2:3", label: "2:3 (Portrait)" },
+    { value: "3:2", label: "3:2 (Landscape)" },
+    { value: "3:4", label: "3:4 (Portrait)" },
+    { value: "4:3", label: "4:3 (Landscape)" },
+    { value: "9:16", label: "9:16 (Vertical)" },
+    { value: "16:9", label: "16:9 (Widescreen)" },
+    { value: "21:9", label: "21:9 (Ultra-wide)" },
+];
+const IMAGE_SIZES: { value: "1K" | "2K" | "4K"; label: string }[] = [
+    { value: "1K", label: "1K" },
+    { value: "2K", label: "2K" },
+    { value: "4K", label: "4K" },
+];
+const GARMENT_TYPES = ["Top", "Bottom", "One-Piece"] as const;
 
 export default function ProductPack() {
     const { activeProfile, setActiveProfile } = useAppStore();
@@ -16,8 +31,10 @@ export default function ProductPack() {
     const [frontImage, setFrontImage] = useState<File | null>(null);
     const [backImage, setBackImage] = useState<File | null>(null);
     const [selectedAngles, setSelectedAngles] = useState<string[]>(["Front", "Back"]);
-    const [ratio, setRatio] = useState("1:1 (Square)");
+    const [ratio, setRatio] = useState("1:1");
+    const [imageSize, setImageSize] = useState<"1K" | "2K" | "4K">("1K");
     const [useCutout, setUseCutout] = useState(false);
+    const [garmentType, setGarmentType] = useState<typeof GARMENT_TYPES[number]>("Top");
     const [additionalPrompt, setAdditionalPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [results, setResults] = useState<{ angle: string; image: string; storagePath?: string; outputId?: string }[]>([]);
@@ -147,6 +164,8 @@ export default function ProductPack() {
                         aspectRatio: ratio,
                         dressRef,
                         referenceRef,
+                        imageSize,
+                        garmentType,
                     }),
                 });
 
@@ -181,6 +200,25 @@ export default function ProductPack() {
                 <Card className="lg:col-span-1">
                     <CardHeader title="Inputs" subtitle="SKU + images" />
                     <CardBody className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium opacity-70">Garment Type</label>
+                            <div className="flex bg-[color:var(--sp-panel)] p-1 rounded-lg border border-[color:var(--sp-border)]">
+                                {GARMENT_TYPES.map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setGarmentType(type)}
+                                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                            garmentType === type
+                                                ? "bg-[color:var(--sp-surface)] text-[color:var(--sp-text)] shadow-sm"
+                                                : "text-[color:var(--sp-muted)] hover:text-[color:var(--sp-text)]"
+                                        }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="space-y-1">
                             <label className="text-sm font-medium opacity-70">Model profile</label>
                             <select
@@ -231,8 +269,10 @@ export default function ProductPack() {
 
                         <div className="grid grid-cols-1 gap-3">
                             <div className="space-y-1">
-                                <label className="text-sm font-medium opacity-70">Front view (required)</label>
-                                <input type="file" onChange={e => setFrontImage(e.target.files?.[0] || null)} className="w-full text-sm" />
+                                <label className="text-sm font-medium opacity-70">
+                                    {garmentType === "Bottom" ? "Bottom" : garmentType === "One-Piece" ? "One-Piece" : "Front"} view (required)
+                                </label>
+                                <input type="file" onChange={(e) => setFrontImage(e.target.files?.[0] || null)} className="w-full text-sm" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-sm font-medium opacity-70">Back view (optional)</label>
@@ -243,7 +283,7 @@ export default function ProductPack() {
                 </Card>
 
                 <Card className="lg:col-span-1">
-                    <CardHeader title="Settings" subtitle="Angles + ratio" />
+                    <CardHeader title="Settings" subtitle="Angles + output" />
                     <CardBody className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium opacity-70">Angles to render</label>
@@ -271,9 +311,31 @@ export default function ProductPack() {
                                 onChange={e => setRatio(e.target.value)}
                                 className="w-full input-field text-sm"
                             >
-                            {RATIOS.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                    </div>
+                                {ASPECT_RATIOS.map((r) => (
+                                    <option key={r.value} value={r.value}>
+                                        {r.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium opacity-70">Resolution</label>
+                            <select
+                                value={imageSize}
+                                onChange={(e) => setImageSize(e.target.value as any)}
+                                className="w-full input-field text-sm"
+                            >
+                                {IMAGE_SIZES.map((s) => (
+                                    <option key={s.value} value={s.value}>
+                                        {s.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="text-xs text-[color:var(--sp-muted)]">
+                                Higher resolutions are slower and cost more.
+                            </div>
+                        </div>
 
                         <label className="flex items-start gap-2 text-sm text-[color:var(--sp-text)]">
                             <input
@@ -285,7 +347,7 @@ export default function ProductPack() {
                             <span>
                                 <span className="font-medium">Use cutout (better fit)</span>
                                 <span className="block text-xs opacity-70">
-                                    Removes background from garment image before generating to reduce stretching. Slower and may cost more.
+                                    Use if the garment photo has a busy background or wrinkles. Improves fidelity.
                                 </span>
                             </span>
                         </label>

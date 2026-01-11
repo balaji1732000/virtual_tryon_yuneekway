@@ -4,5 +4,3 @@ export default function ProductPackPage() {
   return <ProductPack />;
 }
 
-
-

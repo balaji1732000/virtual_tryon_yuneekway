@@ -11,6 +11,7 @@ export default function VirtualTryOn() {
     const [modelPreview, setModelPreview] = useState<string | null>(null);
     const [dressPreview, setDressPreview] = useState<string | null>(null);
     const [additionalPrompt, setAdditionalPrompt] = useState("");
+    const [imageSize, setImageSize] = useState<"1K" | "2K" | "4K">("1K");
     const [isGenerating, setIsGenerating] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [resultPath, setResultPath] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export default function VirtualTryOn() {
                     type: 'tryon',
                     jobId,
                     additionalPrompt: additionalPrompt.trim(),
+                    imageSize,
                     modelRef: { bucket: "uploads", path: modelPath },
                     dressRef: { bucket: "uploads", path: dressPath },
                 }),
@@ -164,6 +166,22 @@ export default function VirtualTryOn() {
                 <Card>
                     <CardHeader title="Generate" subtitle="Optional guidance + run" />
                     <CardBody className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium opacity-70">Resolution</label>
+                            <select
+                                value={imageSize}
+                                onChange={(e) => setImageSize(e.target.value as any)}
+                                className="w-full input-field text-sm"
+                            >
+                                <option value="1K">1K</option>
+                                <option value="2K">2K</option>
+                                <option value="4K">4K</option>
+                            </select>
+                            <div className="text-xs text-[color:var(--sp-muted)]">
+                                Higher resolutions are slower and cost more.
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <label className="text-sm font-medium opacity-70">Additional instructions</label>
                             <textarea
