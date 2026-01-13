@@ -380,11 +380,7 @@ export async function editImageWithMask(args: {
     invert?: boolean;
     feather?: number;
 }) {
-    const model = "gemini-2.5-flash-image";
-
-    const invertText = args.invert
-        ? "INVERT MODE: The mask indicates PROTECTED region; edit everything else."
-        : "DEFAULT MODE: The mask indicates EDITABLE region; edit only inside it.";
+    const chatModel = "gemini-2.5-flash-image";
 
     const featherText = typeof args.feather === "number" && args.feather > 0
         ? `Mask edges are feathered by ~${Math.round(args.feather)}px. Blend seamlessly at the boundary.`
@@ -395,8 +391,12 @@ You are an expert photo retoucher and image editor.
 
 TASK: Edit the image according to the user's request.
 
-CONSTRAINTS:
-- Preserve identity, background, and lighting as much as possible.
+ABSOLUTE CONSTRAINTS (must follow):
+- Treat the provided mask as authoritative. If the user's text conflicts with the mask location, follow the mask.
+- Do NOT change framing, crop, zoom, camera angle, or overall image dimensions.
+- Do NOT mirror/flip the image.
+- Keep everything outside the editable mask unchanged.
+- Preserve identity, background, lighting, and garment details as much as possible.
 - Do not add text or watermarks.
 - Output a single PNG image.
 `;
@@ -404,11 +404,11 @@ CONSTRAINTS:
     const maskRules = args.maskImageB64
         ? `
 MASKING:
-- A mask image is provided as the SECOND image.
+- A user-provided mask is provided.
 - White pixels = editable, black pixels = protected.
-- ${invertText}
 - ${featherText}
 - Keep all protected pixels unchanged (pixel-perfect if possible).
+- If there are multiple painted regions, apply the edit only within the main painted region.
 `
         : `
 MASKING:
@@ -417,6 +417,7 @@ MASKING:
 
     const fullPrompt = `${baseRules}\n${maskRules}\nUSER REQUEST:\n${args.prompt}\n`;
 
+    // Gemini Developer API: use Gemini image chat editing. (Imagen editImage is Vertex AI only.)
     const parts: any[] = [
         { text: fullPrompt },
         { inlineData: { data: args.baseImageB64, mimeType: args.baseMimeType || "image/png" } },
@@ -426,11 +427,14 @@ MASKING:
         parts.push({ inlineData: { data: args.maskImageB64, mimeType: args.maskMimeType || "image/png" } });
     }
 
-    const response = await client.models.generateContent({
-        model,
+    const response: any = await client.models.generateContent({
+        model: chatModel,
         contents: [{ role: "user", parts }],
         config: { responseModalities: ["IMAGE", "TEXT"], temperature: 0.1 },
     });
 
-    return response;
+    const respParts = response?.candidates?.[0]?.content?.parts ?? [];
+    const imagePart = respParts.find((p: any) => p.inlineData?.data);
+    if (!imagePart?.inlineData?.data) throw new Error("No image generated");
+    return { b64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType || "image/png" };
 }

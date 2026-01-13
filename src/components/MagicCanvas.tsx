@@ -66,8 +66,22 @@ export default function MagicCanvas() {
 
   const [maskBlob, setMaskBlob] = useState<Blob | null>(null);
   const [maskMeta, setMaskMeta] = useState<{ invert: boolean; feather: number }>({ invert: false, feather: 8 });
+  const [autoClearMaskAfterSend, setAutoClearMaskAfterSend] = useState(true);
+  const [maskSessionKey, setMaskSessionKey] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Keep the mask canvas aligned to the current image's aspect ratio.
+  // We cap it for performance; the backend will resize the uploaded mask to the base image dimensions.
+  const [maskCanvasSize, setMaskCanvasSize] = useState<{ w: number; h: number }>({ w: 1024, h: 768 });
+
+  const fitWithin = (w: number, h: number, maxSide: number) => {
+    if (!w || !h) return { w: 1024, h: 768 };
+    const max = Math.max(w, h);
+    if (max <= maxSide) return { w, h };
+    const scale = maxSide / max;
+    return { w: Math.max(1, Math.round(w * scale)), h: Math.max(1, Math.round(h * scale)) };
+  };
 
   const loadThreads = async () => {
     const res = await fetch("/api/canvas/threads");
@@ -222,11 +236,17 @@ export default function MagicCanvas() {
     return `${t.title} • ${when}`;
   };
 
+  const resetMask = () => {
+    setMaskBlob(null);
+    setMaskSessionKey((k) => k + 1);
+  };
+
   const selectAsset = (id: string) => {
     setActiveAssetId(id);
     const a = assets.find((x) => x.id === id);
     setCurrentImageUrl(a?.currentUrl || a?.baseUrl || baseUrl);
     setBaseOverride(null);
+    resetMask();
   };
 
   const versionsForActiveAsset = useMemo(() => {
@@ -276,6 +296,7 @@ export default function MagicCanvas() {
       await loadThread(threadId, { conversationId: activeConversationId, preferredAssetId: activeAssetId });
       await loadThreads();
       setBaseOverride(null);
+      if (autoClearMaskAfterSend) resetMask();
     } catch (e: any) {
       setError(e?.message || "Edit failed");
     } finally {
@@ -306,8 +327,23 @@ export default function MagicCanvas() {
     }
   };
 
-  const canvasWidth = 1024;
-  const canvasHeight = 768;
+  useEffect(() => {
+    const src = currentImageUrl || baseUrl;
+    if (!src) return;
+    const img = new Image();
+    // Signed URLs are cross-origin, but we only need naturalWidth/Height.
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const w = (img as any).naturalWidth || img.width;
+      const h = (img as any).naturalHeight || img.height;
+      setMaskCanvasSize(fitWithin(Number(w), Number(h), 1024));
+    };
+    img.onerror = () => {
+      // Keep previous size; editing still works but alignment may degrade.
+    };
+    img.src = src;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImageUrl, baseUrl]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6 items-stretch">
@@ -404,9 +440,10 @@ export default function MagicCanvas() {
           <CardHeader title="Mask + preview" subtitle="Paint where the AI can edit. Then prompt on the right." />
           <CardBody>
             <MaskCanvas
+              key={maskSessionKey}
               imageUrl={currentImageUrl || baseUrl}
-              width={canvasWidth}
-              height={canvasHeight}
+              width={maskCanvasSize.w}
+              height={maskCanvasSize.h}
               onMaskChange={(blob, meta) => {
                 setMaskBlob(blob);
                 setMaskMeta(meta);
@@ -424,6 +461,7 @@ export default function MagicCanvas() {
                       onClick={() => {
                         setCurrentImageUrl(v.signedUrl);
                         setBaseOverride({ bucket: v.bucket, path: v.path, signedUrl: v.signedUrl });
+                        resetMask();
                       }}
                       className={`flex-shrink-0 w-[140px] rounded-xl border overflow-hidden text-left ${
                         baseOverride?.path === v.path ? "border-[color:var(--sp-primary)]" : "border-[color:var(--sp-border)]"
@@ -514,6 +552,7 @@ export default function MagicCanvas() {
                                 path: m.output_storage_path,
                                 signedUrl: m.outputUrl || "",
                               });
+                              resetMask();
                             }
                           }}
                         />
@@ -544,6 +583,14 @@ export default function MagicCanvas() {
               Mask: {maskMeta.invert ? "invert" : "inside-only"} • Feather: {Math.round(maskMeta.feather)}px
               {baseOverride ? " • Base: selected version" : ""}
             </div>
+            <label className="text-xs opacity-70 flex items-center gap-2 select-none">
+              <input
+                type="checkbox"
+                checked={autoClearMaskAfterSend}
+                onChange={(e) => setAutoClearMaskAfterSend(e.target.checked)}
+              />
+              Auto-clear mask after send
+            </label>
           </div>
         </CardBody>
       </Card>

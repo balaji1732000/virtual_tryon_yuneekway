@@ -46,7 +46,8 @@ export function MaskCanvas(props: {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      const v = d[i]; // 0..255 (white=editable)
+      const raw = d[i]; // 0..255 (white=editable)
+      const v = invert ? 255 - raw : raw;
       // Overlay tint
       d[i] = 168; // R
       d[i + 1] = 85; // G
@@ -73,25 +74,12 @@ export function MaskCanvas(props: {
     octx.drawImage(base, 0, 0);
     octx.filter = "none";
 
-    if (invert) {
-      const id = octx.getImageData(0, 0, out.width, out.height);
-      const d = id.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const v = d[i];
-        const inv = 255 - v;
-        d[i] = inv;
-        d[i + 1] = inv;
-        d[i + 2] = inv;
-        d[i + 3] = 255;
-      }
-      octx.putImageData(id, 0, 0);
-    } else {
-      // ensure alpha is opaque
-      const id = octx.getImageData(0, 0, out.width, out.height);
-      const d = id.data;
-      for (let i = 0; i < d.length; i += 4) d[i + 3] = 255;
-      octx.putImageData(id, 0, 0);
-    }
+    // IMPORTANT: Do not invert pixels here. We always export a "white=editable" mask.
+    // "invert" is treated as meaning (edit outside) and is applied server-side for correctness.
+    const id = octx.getImageData(0, 0, out.width, out.height);
+    const d = id.data;
+    for (let i = 0; i < d.length; i += 4) d[i + 3] = 255;
+    octx.putImageData(id, 0, 0);
 
     return await new Promise<Blob | null>((resolve) => out.toBlob(resolve, "image/png"));
   };
@@ -103,6 +91,7 @@ export function MaskCanvas(props: {
 
   useEffect(() => {
     emitMask();
+    redraw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invert, feather, props.imageUrl]);
 
