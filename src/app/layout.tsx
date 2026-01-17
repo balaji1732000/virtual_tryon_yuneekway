@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Yuneekwayai",
-  description: "Ecommerce image generation SaaS powered by Nano Banana",
+  description: "Ecommerce image generation SaaS",
 };
 
 export default function RootLayout({

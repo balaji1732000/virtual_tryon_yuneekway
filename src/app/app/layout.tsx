@@ -22,7 +22,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="glass-panel p-5">
           <div className="mb-5">
             <div className="text-lg font-semibold tracking-tight">Yuneekwayai</div>
-            <div className="text-xs opacity-70">Powered by Nano Banana</div>
           </div>
 
           <nav className="space-y-1">
