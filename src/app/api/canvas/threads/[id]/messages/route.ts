@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { editImageWithMask } from "@/lib/gemini";
+import { BillingError, consumeCredits, refundCredits } from "@/lib/billing/credits";
+import { creditsCostForOperation } from "@/lib/billing/plans";
 import sharp from "sharp";
 
 async function createAlphaPngFromMask(maskBuf: Buffer, width: number, height: number) {
@@ -260,6 +262,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // This makes it much harder for the model to place the edit elsewhere (e.g. wrong cheek).
   let outBufRaw: Buffer;
   let cropRect: { left: number; top: number; width: number; height: number } | null = null;
+  const cost = creditsCostForOperation({ operation: "edit" });
+  let billingConsume: any | null = null;
 
   if (effectiveMaskBuf) {
     const bbox = await computeMaskBoundingBox(effectiveMaskBuf, baseW, baseH);
@@ -276,27 +280,61 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const baseCropPng = await sharp(latestBuf).extract(cropRect).png().toBuffer();
     const maskCropPng = await sharp(effectiveMaskBuf).resize(baseW, baseH, { fit: "fill" }).extract(cropRect).png().toBuffer();
 
-    const edited = await editImageWithMask({
-      baseImageB64: baseCropPng.toString("base64"),
-      baseMimeType: "image/png",
-      prompt: text,
-      maskImageB64: maskCropPng.toString("base64"),
-      maskMimeType: "image/png",
-      invert: false,
-      feather,
-    });
-    outBufRaw = Buffer.from(edited.b64, "base64");
+    try {
+      billingConsume = await consumeCredits({ userId: user.id, amount: cost });
+    } catch (e: any) {
+      if (e instanceof BillingError) {
+        const status =
+          e.code === "insufficient_credits" || e.code === "no_active_credit_period" || e.code === "subscription_not_active" ? 402 : 400;
+        return NextResponse.json({ error: e.message, code: e.code }, { status });
+      }
+      return NextResponse.json({ error: e?.message || "Billing error" }, { status: 500 });
+    }
+
+    try {
+      const edited = await editImageWithMask({
+        baseImageB64: baseCropPng.toString("base64"),
+        baseMimeType: "image/png",
+        prompt: text,
+        maskImageB64: maskCropPng.toString("base64"),
+        maskMimeType: "image/png",
+        invert: false,
+        feather,
+      });
+      outBufRaw = Buffer.from(edited.b64, "base64");
+    } catch (e: any) {
+      const periodId = billingConsume?.period_id;
+      if (periodId) await refundCredits({ periodId, amount: cost });
+      return NextResponse.json({ error: e?.message || "Edit failed" }, { status: 500 });
+    }
   } else {
-    const edited = await editImageWithMask({
-      baseImageB64: latestB64,
-      baseMimeType,
-      prompt: text,
-      maskImageB64: null,
-      maskMimeType: undefined,
-      invert: false,
-      feather,
-    });
-    outBufRaw = Buffer.from(edited.b64, "base64");
+    try {
+      billingConsume = await consumeCredits({ userId: user.id, amount: cost });
+    } catch (e: any) {
+      if (e instanceof BillingError) {
+        const status =
+          e.code === "insufficient_credits" || e.code === "no_active_credit_period" || e.code === "subscription_not_active" ? 402 : 400;
+        return NextResponse.json({ error: e.message, code: e.code }, { status });
+      }
+      return NextResponse.json({ error: e?.message || "Billing error" }, { status: 500 });
+    }
+
+    try {
+      const edited = await editImageWithMask({
+        baseImageB64: latestB64,
+        baseMimeType,
+        prompt: text,
+        maskImageB64: null,
+        maskMimeType: undefined,
+        invert: false,
+        feather,
+      });
+      outBufRaw = Buffer.from(edited.b64, "base64");
+    } catch (e: any) {
+      const periodId = billingConsume?.period_id;
+      if (periodId) await refundCredits({ periodId, amount: cost });
+      return NextResponse.json({ error: e?.message || "Edit failed" }, { status: 500 });
+    }
   }
 
   // Enforce: same output dimensions + edit strictly limited to mask region.

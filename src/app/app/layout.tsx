@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles } from "lucide-react";
+import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles, CreditCard } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const nav = [
@@ -13,6 +13,7 @@ const nav = [
   { href: "/app/model-generator", label: "Model Generator", icon: UserPlus },
   { href: "/app/video", label: "Video", icon: Video },
   { href: "/app/extract-garment", label: "Extract Garment", icon: Scissors },
+  { href: "/app/billing", label: "Billing", icon: CreditCard },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
