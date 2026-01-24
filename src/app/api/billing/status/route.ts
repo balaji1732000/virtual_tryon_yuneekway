@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
     const status = await getBillingStatus({ userId: user.id });
     return NextResponse.json(status);
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Failed to load billing status" }, { status: 500 });
+    const msg = String(e?.message || "Failed to load billing status");
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

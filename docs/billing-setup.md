@@ -11,10 +11,15 @@ This creates:
 - **`SUPABASE_SERVICE_ROLE_KEY`**: for server-side billing + webhook writes.
 - **`DODO_PAYMENTS_API_KEY`**: Dodo API key (test or live).
 - **`DODO_PAYMENTS_WEBHOOK_KEY`**: signing secret used to verify webhook HMAC.
+- **`DODO_PAYMENTS_ENV`**: set to `test_mode` for test keys, `live_mode` for live keys.
 - **`DODO_PRODUCT_ID_STARTER_MONTHLY`**
 - **`DODO_PRODUCT_ID_STARTER_YEARLY`**
 - **`DODO_PRODUCT_ID_PRO_MONTHLY`**
 - **`DODO_PRODUCT_ID_PRO_YEARLY`**
+
+If you prefer overriding base URL directly, set:
+- `DODO_PAYMENTS_BASE_URL=https://test.dodopayments.com` (or `https://live.dodopayments.com`)
+and do not set `DODO_PAYMENTS_ENV`.
 
 Optional:
 - **`BILLING_CRON_SECRET`**: shared secret for `/api/cron/billing-reset` (used by Vercel Cron).
@@ -36,5 +41,8 @@ Visit:
 
 Use **Subscribe** to create a Dodo checkout session and open the returned `checkout_url`.
 After payment, click **Refresh** to load subscription + credit status.
+
+#### Local note
+This repo ignores `.env*` files. Create `nextjs_app/.env.local` manually with the required vars, then restart `npm run dev` so Next.js picks them up.
 
 
