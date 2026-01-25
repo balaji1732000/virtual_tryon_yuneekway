@@ -379,6 +379,7 @@ export async function editImageWithMask(args: {
     maskMimeType?: string;
     invert?: boolean;
     feather?: number;
+    fullImageContext?: string;
 }) {
     const chatModel = "gemini-2.5-flash-image";
 
@@ -401,6 +402,10 @@ ABSOLUTE CONSTRAINTS (must follow):
 - Output a single PNG image.
 `;
 
+    const contextSection = args.fullImageContext
+        ? `\nFULL IMAGE CONTEXT (for understanding):\n${args.fullImageContext}\n\nNote: You are editing a specific region of this image. Focus your edits on the masked area but maintain consistency with the full image context described above.\n`
+        : "";
+
     const maskRules = args.maskImageB64
         ? `
 MASKING:
@@ -415,7 +420,8 @@ MASKING:
 - No mask provided. Apply the edit to the whole image, while preserving identity/background.
 `;
 
-    const fullPrompt = `${baseRules}\n${maskRules}\nUSER REQUEST:\n${args.prompt}\n`;
+    const fullPrompt = `${baseRules}${contextSection}\n${maskRules}\nUSER REQUEST:\n${args.prompt}\n`;
+
 
     // Gemini Developer API: use Gemini image chat editing. (Imagen editImage is Vertex AI only.)
     const parts: any[] = [
