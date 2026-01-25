@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
-import { editImageWithMask } from "@/lib/gemini";
+import { editImageWithMask, getGeminiClient } from "@/lib/gemini";
 import { BillingError, consumeCredits, refundCredits } from "@/lib/billing/credits";
 import { creditsCostForOperation } from "@/lib/billing/plans";
 import sharp from "sharp";
@@ -123,8 +123,7 @@ async function generateImageContext(imageBuf: Buffer): Promise<string> {
   // Generate a text description of the full image to provide context for masked edits.
   // This uses a simple Gemini prompt to describe the image.
   try {
-    const { GoogleGenAI } = await import("@google/generative-ai");
-    const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    const client = getGeminiClient();
     
     const response: any = await client.models.generateContent({
       model: "gemini-2.5-flash-image",
@@ -287,17 +286,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // Run provider edit (mask is optional).
   // If mask exists, crop to the mask region (plus margin) before calling the model.
   // This makes it much harder for the model to place the edit elsewhere (e.g. wrong cheek).
-  let outBufRaw: Buffer;
+  let outBufRaw: Buffer | null = null;
   let cropRect: { left: number; top: number; width: number; height: number } | null = null;
   const cost = creditsCostForOperation({ operation: "edit" });
   let billingConsume: any | null = null;
 
+  // Check if mask is non-empty before treating as masked edit
+  let hasMask = false;
   if (effectiveMaskBuf) {
     const bbox = await computeMaskBoundingBox(effectiveMaskBuf, baseW, baseH);
-    // If mask is empty (all black), treat as "no mask" and fall through to full image edit
+    // If mask is empty (all black), treat as "no mask"
     if (!bbox) {
       effectiveMaskBuf = null;
+      hasMask = false;
     } else {
+      hasMask = true;
+    }
+  }
+
+  if (hasMask && effectiveMaskBuf) {
+    // Masked edit path
+    const bbox = await computeMaskBoundingBox(effectiveMaskBuf, baseW, baseH);
+    if (bbox) {
       const margin = Math.max(24, Math.round(Math.max(baseW, baseH) * 0.03)); // ~3% of max side
       const left = Math.max(0, bbox.minX - margin);
       const top = Math.max(0, bbox.minY - margin);
@@ -347,9 +357,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         return NextResponse.json({ error: e?.message || "Edit failed" }, { status: 500 });
       }
     }
-  }
-  
-  if (!effectiveMaskBuf) {
+  } else {
+    // No mask or empty mask - full image edit
     try {
       billingConsume = await consumeCredits({ userId: user.id, amount: cost });
     } catch (e: any) {
@@ -377,6 +386,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       if (periodId) await refundCredits({ periodId, amount: cost });
       return NextResponse.json({ error: e?.message || "Edit failed" }, { status: 500 });
     }
+  }
+
+  // Ensure outBufRaw was assigned
+  if (!outBufRaw) {
+    return NextResponse.json({ error: "Failed to generate edited image" }, { status: 500 });
   }
 
   // Enforce: same output dimensions + edit strictly limited to mask region.
