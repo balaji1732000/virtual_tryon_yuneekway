@@ -160,7 +160,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a title"
-          className="w-full px-3 py-2 bg-[color:var(--sp-panel)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-text)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-[color:var(--sp-panel)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-text)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sp-primary)]"
           maxLength={200}
           required
         />
@@ -179,7 +179,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={type.placeholder}
-          className="w-full px-3 py-2 bg-[color:var(--sp-panel)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-text)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
+          className="w-full px-3 py-2 bg-[color:var(--sp-panel)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-text)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-[color:var(--sp-primary)] min-h-[120px] resize-y"
           maxLength={5000}
           required
         />
@@ -213,7 +213,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
         ) : (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-[color:var(--sp-border)] rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
+            className="border-2 border-dashed border-[color:var(--sp-border)] rounded-lg p-6 text-center cursor-pointer hover:border-[color:var(--sp-primary)] transition-colors"
           >
             <Upload className="w-8 h-8 text-[color:var(--sp-muted)] mx-auto mb-2" />
             <p className="text-sm text-[color:var(--sp-text)] mb-1">
@@ -254,7 +254,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2.5 bg-[color:var(--sp-primary)] text-[color:var(--sp-primary-text)] rounded-lg hover:bg-[color:var(--sp-primary-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>

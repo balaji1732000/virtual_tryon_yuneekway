@@ -89,7 +89,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                       {type.icon}
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-[color:var(--sp-text)] group-hover:text-blue-600 transition-colors">
+                      <div className="font-medium text-[color:var(--sp-text)] transition-colors">
                         {type.label}
                       </div>
                     </div>

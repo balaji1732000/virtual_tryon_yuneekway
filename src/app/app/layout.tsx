@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles, CreditCard } from "lucide-react";
+import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles, CreditCard, MessageSquare } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { FeedbackModal } from "@/components/FeedbackModal";
@@ -56,6 +56,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <span>{item.label}</span>
               </Link>
             ))}
+            
+            {/* Feedback link */}
+            <button
+              onClick={() => setIsFeedbackModalOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[color:var(--sp-hover)] transition-colors text-sm text-left"
+            >
+              <MessageSquare size={16} className="opacity-70" />
+              <span>Feedback</span>
+            </button>
           </nav>
 
           <div className="mt-6 pt-6 border-t border-[color:var(--sp-border)] space-y-3">
