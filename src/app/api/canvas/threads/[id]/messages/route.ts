@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { editImageWithMask } from "@/lib/gemini";
+import { BillingError, consumeCredits, refundCredits } from "@/lib/billing/credits";
+import { creditsCostForOperation } from "@/lib/billing/plans";
 import sharp from "sharp";
 
 async function createAlphaPngFromMask(maskBuf: Buffer, width: number, height: number) {
@@ -115,6 +117,33 @@ async function computeMaskBoundingBox(maskBuf: Buffer, width: number, height: nu
   const maxX = Math.min(width - 1, Math.ceil((best.maxX + 1) * sx) - 1);
   const maxY = Math.min(height - 1, Math.ceil((best.maxY + 1) * sy) - 1);
   return { minX, minY, maxX, maxY, debug: { downsampled: { w: w2, h: h2 }, bestArea } };
+}
+
+async function generateImageContext(imageBuf: Buffer): Promise<string> {
+  // Generate a text description of the full image to provide context for masked edits.
+  // This uses a simple Gemini prompt to describe the image.
+  try {
+    const { GoogleGenAI } = await import("@google/generative-ai");
+    const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    
+    const response: any = await client.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: "Describe this image in 2-3 sentences. Focus on: subject identity (person/object), pose/position, clothing/appearance, background, and overall composition. Be concise and specific." },
+          { inlineData: { data: imageBuf.toString("base64"), mimeType: "image/png" } }
+        ]
+      }],
+      config: { temperature: 0.3 }
+    });
+
+    const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    return text.trim();
+  } catch (e) {
+    console.warn("[generateImageContext] Failed:", e);
+    return "";
+  }
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -260,43 +289,94 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // This makes it much harder for the model to place the edit elsewhere (e.g. wrong cheek).
   let outBufRaw: Buffer;
   let cropRect: { left: number; top: number; width: number; height: number } | null = null;
+  const cost = creditsCostForOperation({ operation: "edit" });
+  let billingConsume: any | null = null;
 
   if (effectiveMaskBuf) {
     const bbox = await computeMaskBoundingBox(effectiveMaskBuf, baseW, baseH);
-    if (!bbox) return NextResponse.json({ error: "Mask is empty. Brush a region to edit." }, { status: 400 });
+    // If mask is empty (all black), treat as "no mask" and fall through to full image edit
+    if (!bbox) {
+      effectiveMaskBuf = null;
+    } else {
+      const margin = Math.max(24, Math.round(Math.max(baseW, baseH) * 0.03)); // ~3% of max side
+      const left = Math.max(0, bbox.minX - margin);
+      const top = Math.max(0, bbox.minY - margin);
+      const right = Math.min(baseW - 1, bbox.maxX + margin);
+      const bottom = Math.min(baseH - 1, bbox.maxY + margin);
+      cropRect = { left, top, width: right - left + 1, height: bottom - top + 1 };
+      console.info("[canvas_edit] mask_bbox", { baseW, baseH, bbox, cropRect });
 
-    const margin = Math.max(24, Math.round(Math.max(baseW, baseH) * 0.03)); // ~3% of max side
-    const left = Math.max(0, bbox.minX - margin);
-    const top = Math.max(0, bbox.minY - margin);
-    const right = Math.min(baseW - 1, bbox.maxX + margin);
-    const bottom = Math.min(baseH - 1, bbox.maxY + margin);
-    cropRect = { left, top, width: right - left + 1, height: bottom - top + 1 };
-    console.info("[canvas_edit] mask_bbox", { baseW, baseH, bbox, cropRect });
+      const baseCropPng = await sharp(latestBuf).extract(cropRect).png().toBuffer();
+      const maskCropPng = await sharp(effectiveMaskBuf).resize(baseW, baseH, { fit: "fill" }).extract(cropRect).png().toBuffer();
 
-    const baseCropPng = await sharp(latestBuf).extract(cropRect).png().toBuffer();
-    const maskCropPng = await sharp(effectiveMaskBuf).resize(baseW, baseH, { fit: "fill" }).extract(cropRect).png().toBuffer();
+      // Generate full image context description for better AI understanding
+      let fullImageContext = "";
+      try {
+        const contextDesc = await generateImageContext(latestBuf);
+        fullImageContext = contextDesc;
+      } catch (e) {
+        console.warn("[canvas_edit] Failed to generate image context:", e);
+      }
 
-    const edited = await editImageWithMask({
-      baseImageB64: baseCropPng.toString("base64"),
-      baseMimeType: "image/png",
-      prompt: text,
-      maskImageB64: maskCropPng.toString("base64"),
-      maskMimeType: "image/png",
-      invert: false,
-      feather,
-    });
-    outBufRaw = Buffer.from(edited.b64, "base64");
-  } else {
-    const edited = await editImageWithMask({
-      baseImageB64: latestB64,
-      baseMimeType,
-      prompt: text,
-      maskImageB64: null,
-      maskMimeType: undefined,
-      invert: false,
-      feather,
-    });
-    outBufRaw = Buffer.from(edited.b64, "base64");
+      try {
+        billingConsume = await consumeCredits({ userId: user.id, amount: cost });
+      } catch (e: any) {
+        if (e instanceof BillingError) {
+          const status =
+            e.code === "insufficient_credits" || e.code === "no_active_credit_period" || e.code === "subscription_not_active" ? 402 : 400;
+          return NextResponse.json({ error: e.message, code: e.code }, { status });
+        }
+        return NextResponse.json({ error: e?.message || "Billing error" }, { status: 500 });
+      }
+
+      try {
+        const edited = await editImageWithMask({
+          baseImageB64: baseCropPng.toString("base64"),
+          baseMimeType: "image/png",
+          prompt: text,
+          maskImageB64: maskCropPng.toString("base64"),
+          maskMimeType: "image/png",
+          invert: false,
+          feather,
+          fullImageContext,
+        });
+        outBufRaw = Buffer.from(edited.b64, "base64");
+      } catch (e: any) {
+        const periodId = billingConsume?.period_id;
+        if (periodId) await refundCredits({ periodId, amount: cost });
+        return NextResponse.json({ error: e?.message || "Edit failed" }, { status: 500 });
+      }
+    }
+  }
+  
+  if (!effectiveMaskBuf) {
+    try {
+      billingConsume = await consumeCredits({ userId: user.id, amount: cost });
+    } catch (e: any) {
+      if (e instanceof BillingError) {
+        const status =
+          e.code === "insufficient_credits" || e.code === "no_active_credit_period" || e.code === "subscription_not_active" ? 402 : 400;
+        return NextResponse.json({ error: e.message, code: e.code }, { status });
+      }
+      return NextResponse.json({ error: e?.message || "Billing error" }, { status: 500 });
+    }
+
+    try {
+      const edited = await editImageWithMask({
+        baseImageB64: latestB64,
+        baseMimeType,
+        prompt: text,
+        maskImageB64: null,
+        maskMimeType: undefined,
+        invert: false,
+        feather,
+      });
+      outBufRaw = Buffer.from(edited.b64, "base64");
+    } catch (e: any) {
+      const periodId = billingConsume?.period_id;
+      if (periodId) await refundCredits({ periodId, amount: cost });
+      return NextResponse.json({ error: e?.message || "Edit failed" }, { status: 500 });
+    }
   }
 
   // Enforce: same output dimensions + edit strictly limited to mask region.

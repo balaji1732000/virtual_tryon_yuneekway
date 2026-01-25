@@ -4,6 +4,8 @@ import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
 import { expectedDims, generateModelWithDress, generateVirtualTryOn, normalizeAspectRatio, normalizeImageSize } from "@/lib/gemini";
 import { normalizeBufferToJpeg, normalizeToJpeg } from "@/lib/image-normalize";
 import { getOrCreateGarmentCutout } from "@/lib/garment-cutout";
+import { BillingError, consumeCredits, refundCredits } from "@/lib/billing/credits";
+import { creditsCostForOperation } from "@/lib/billing/plans";
 import sharp from "sharp";
 
 function firstInlineImage(response: any): { b64: string; mimeType: string } | null {
@@ -80,7 +82,27 @@ export async function POST(req: NextRequest) {
       const modelBase64 = modelNorm.buffer.toString("base64");
       const dressBase64 = dressNorm.buffer.toString("base64");
 
-      const response = await withRetry(() => generateVirtualTryOn(modelBase64, dressBase64, additionalPrompt, aspectRatio, imageSize));
+      const cost = creditsCostForOperation({ operation: "generate" });
+      let billingConsume: any | null = null;
+      try {
+        billingConsume = await consumeCredits({ userId: user.id, amount: cost });
+      } catch (e: any) {
+        if (e instanceof BillingError) {
+          const status =
+            e.code === "insufficient_credits" || e.code === "no_active_credit_period" || e.code === "subscription_not_active" ? 402 : 400;
+          return NextResponse.json({ error: e.message, code: e.code }, { status });
+        }
+        return NextResponse.json({ error: e?.message || "Billing error" }, { status: 500 });
+      }
+
+      let response: any;
+      try {
+        response = await withRetry(() => generateVirtualTryOn(modelBase64, dressBase64, additionalPrompt, aspectRatio, imageSize));
+      } catch (e) {
+        const periodId = billingConsume?.period_id;
+        if (periodId) await refundCredits({ periodId, amount: cost });
+        throw e;
+      }
       const extracted = firstInlineImage(response);
       if (!extracted) return NextResponse.json({ error: "No image generated" }, { status: 500 });
 
@@ -223,15 +245,35 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: e?.message || "Failed to create garment cutout" }, { status: 400 });
       }
 
-      const response = await withRetry(() =>
-        generateModelWithDress(dressBase64, angle, skinTone, region, background, referenceBase64, additionalPrompt, gender, aspectRatio, imageSize, {
-          garmentMimeType: dressMimeType,
-          referenceMimeType: "image/jpeg",
-          garmentView,
-          backDressBase64,
-          garmentType,
-        })
-      );
+      const cost = creditsCostForOperation({ operation: "generate" });
+      let billingConsume: any | null = null;
+      try {
+        billingConsume = await consumeCredits({ userId: user.id, amount: cost });
+      } catch (e: any) {
+        if (e instanceof BillingError) {
+          const status =
+            e.code === "insufficient_credits" || e.code === "no_active_credit_period" || e.code === "subscription_not_active" ? 402 : 400;
+          return NextResponse.json({ error: e.message, code: e.code }, { status });
+        }
+        return NextResponse.json({ error: e?.message || "Billing error" }, { status: 500 });
+      }
+
+      let response: any;
+      try {
+        response = await withRetry(() =>
+          generateModelWithDress(dressBase64, angle, skinTone, region, background, referenceBase64, additionalPrompt, gender, aspectRatio, imageSize, {
+            garmentMimeType: dressMimeType,
+            referenceMimeType: "image/jpeg",
+            garmentView,
+            backDressBase64,
+            garmentType,
+          })
+        );
+      } catch (e) {
+        const periodId = billingConsume?.period_id;
+        if (periodId) await refundCredits({ periodId, amount: cost });
+        throw e;
+      }
 
       const extracted = firstInlineImage(response);
       if (!extracted) return NextResponse.json({ error: "No image generated" }, { status: 500 });

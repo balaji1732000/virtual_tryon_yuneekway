@@ -437,7 +437,7 @@ export default function MagicCanvas() {
         </Card>
 
         <Card>
-          <CardHeader title="Mask + preview" subtitle="Paint where the AI can edit. Then prompt on the right." />
+          <CardHeader title="Mask + preview" subtitle="Optional: Brush an area to focus edits, or leave empty to edit the whole image." />
           <CardBody>
             <MaskCanvas
               key={maskSessionKey}

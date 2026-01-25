@@ -5,8 +5,12 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Yuneekwayai",
-  description: "Ecommerce image generation SaaS",
+  title: "YUNEEKWAYAI",
+  description: "AI-powered ecommerce image generation and editing",
+  icons: {
+    icon: "/yuneekway.ico",
+    apple: "/yuneekway.ico",
+  },
 };
 
 export default function RootLayout({
