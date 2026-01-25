@@ -44,11 +44,11 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md bg-[color:var(--sp-background)] rounded-xl shadow-2xl border border-[color:var(--sp-border)] animate-in fade-in zoom-in duration-200">
+      <div className="relative w-full max-w-md bg-[color:var(--sp-panel)] rounded-xl shadow-2xl border border-[color:var(--sp-border)] animate-in fade-in zoom-in duration-200">
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-[color:var(--sp-muted)] hover:text-[color:var(--sp-foreground)] transition-colors z-10"
+          className="absolute top-4 right-4 p-1 text-[color:var(--sp-muted)] hover:text-[color:var(--sp-text)] transition-colors z-10"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -66,7 +66,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
             <>
               {/* Header */}
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-[color:var(--sp-foreground)] mb-2">
+                <h2 className="text-2xl font-bold text-[color:var(--sp-text)] mb-2">
                   Give us feedback
                 </h2>
                 <p className="text-sm text-[color:var(--sp-muted)]">
@@ -89,7 +89,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                       {type.icon}
                     </div>
                     <div className="flex-1">
-                      <div className="font-medium text-[color:var(--sp-foreground)] group-hover:text-blue-600 transition-colors">
+                      <div className="font-medium text-[color:var(--sp-text)] group-hover:text-blue-600 transition-colors">
                         {type.label}
                       </div>
                     </div>

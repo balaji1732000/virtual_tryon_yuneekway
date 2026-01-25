@@ -118,12 +118,12 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
   if (success) {
     return (
       <div className="text-center py-8">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-[color:var(--sp-foreground)] mb-2">Thank you!</h3>
+        <h3 className="text-lg font-semibold text-[color:var(--sp-text)] mb-2">Thank you!</h3>
         <p className="text-sm text-[color:var(--sp-muted)]">Your feedback has been submitted successfully.</p>
       </div>
     );
@@ -136,7 +136,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
         <button
           type="button"
           onClick={onBack}
-          className="text-[color:var(--sp-muted)] hover:text-[color:var(--sp-foreground)] transition-colors"
+          className="text-[color:var(--sp-muted)] hover:text-[color:var(--sp-text)] transition-colors"
           aria-label="Go back"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,13 +145,13 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
         </button>
         <div className="flex items-center gap-2">
           <span className="text-2xl">{type.icon}</span>
-          <h3 className="text-lg font-semibold text-[color:var(--sp-foreground)]">{type.label}</h3>
+          <h3 className="text-lg font-semibold text-[color:var(--sp-text)]">{type.label}</h3>
         </div>
       </div>
 
       {/* Title input */}
       <div>
-        <label htmlFor="feedback-title" className="block text-sm font-medium text-[color:var(--sp-foreground)] mb-2">
+        <label htmlFor="feedback-title" className="block text-sm font-medium text-[color:var(--sp-text)] mb-2">
           Title <span className="text-red-500">*</span>
         </label>
         <input
@@ -160,7 +160,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a title"
-          className="w-full px-3 py-2 bg-[color:var(--sp-input)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-foreground)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-[color:var(--sp-panel)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-text)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500"
           maxLength={200}
           required
         />
@@ -171,7 +171,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
 
       {/* Description textarea */}
       <div>
-        <label htmlFor="feedback-description" className="block text-sm font-medium text-[color:var(--sp-foreground)] mb-2">
+        <label htmlFor="feedback-description" className="block text-sm font-medium text-[color:var(--sp-text)] mb-2">
           Description <span className="text-red-500">*</span>
         </label>
         <textarea
@@ -179,7 +179,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={type.placeholder}
-          className="w-full px-3 py-2 bg-[color:var(--sp-input)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-foreground)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
+          className="w-full px-3 py-2 bg-[color:var(--sp-panel)] border border-[color:var(--sp-border)] rounded-lg text-[color:var(--sp-text)] placeholder:text-[color:var(--sp-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-y"
           maxLength={5000}
           required
         />
@@ -190,7 +190,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
 
       {/* Screenshot upload */}
       <div>
-        <label className="block text-sm font-medium text-[color:var(--sp-foreground)] mb-2">
+        <label className="block text-sm font-medium text-[color:var(--sp-text)] mb-2">
           Screenshot (optional)
         </label>
         
@@ -216,7 +216,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
             className="border-2 border-dashed border-[color:var(--sp-border)] rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
           >
             <Upload className="w-8 h-8 text-[color:var(--sp-muted)] mx-auto mb-2" />
-            <p className="text-sm text-[color:var(--sp-muted)] mb-1">
+            <p className="text-sm text-[color:var(--sp-text)] mb-1">
               Click to upload or drag and drop
             </p>
             <p className="text-xs text-[color:var(--sp-muted)]">
@@ -236,7 +236,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
 
       {/* Error message */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
@@ -246,7 +246,7 @@ export function FeedbackForm({ type, onBack, onClose }: FeedbackFormProps) {
         <button
           type="button"
           onClick={onClose}
-          className="flex-1 px-4 py-2.5 bg-[color:var(--sp-hover)] text-[color:var(--sp-foreground)] rounded-lg hover:bg-[color:var(--sp-border)] transition-colors"
+          className="flex-1 px-4 py-2.5 bg-[color:var(--sp-hover)] text-[color:var(--sp-text)] rounded-lg hover:bg-[color:var(--sp-border)] transition-colors"
           disabled={isSubmitting}
         >
           Cancel
