@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSupabaseAuthedClient } from "@/lib/supabase/auth";
-import { editImageWithMask } from "@/lib/gemini";
+import { editImageWithMask, getGeminiClient } from "@/lib/gemini";
 import { BillingError, consumeCredits, refundCredits } from "@/lib/billing/credits";
 import { creditsCostForOperation } from "@/lib/billing/plans";
 import sharp from "sharp";
@@ -123,8 +123,7 @@ async function generateImageContext(imageBuf: Buffer): Promise<string> {
   // Generate a text description of the full image to provide context for masked edits.
   // This uses a simple Gemini prompt to describe the image.
   try {
-    const { GoogleGenAI } = await import("@google/generative-ai");
-    const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+    const client = getGeminiClient();
     
     const response: any = await client.models.generateContent({
       model: "gemini-2.5-flash-image",
