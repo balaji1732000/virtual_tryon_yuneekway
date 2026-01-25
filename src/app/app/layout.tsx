@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles, CreditCard, MessageSquare } from "lucide-react";
+import { LayoutGrid, User, Users, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles, CreditCard, MessageSquare } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { FeedbackButton } from "@/components/FeedbackButton";
 import { FeedbackModal } from "@/components/FeedbackModal";
@@ -13,7 +13,8 @@ const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutGrid },
   { href: "/app/history", label: "History", icon: Clock },
   { href: "/app/canvas", label: "Magic Canvas", icon: Sparkles },
-  { href: "/app/profiles", label: "Model Profiles", icon: User },
+  { href: "/app/me", label: "My Profile", icon: User },
+  { href: "/app/profiles", label: "Model Profiles", icon: Users },
   { href: "/app/product-pack", label: "Product Pack", icon: Package },
   { href: "/app/try-on", label: "Virtual Try-On", icon: RefreshCw },
   { href: "/app/model-generator", label: "Model Generator", icon: UserPlus },
