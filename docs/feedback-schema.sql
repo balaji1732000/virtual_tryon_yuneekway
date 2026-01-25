@@ -61,3 +61,4 @@ CREATE POLICY "Users can insert feedback" ON feedback_submissions
 -- CREATE POLICY "Users can view own feedback screenshots" ON storage.objects
 --   FOR SELECT USING (bucket_id = 'feedback-screenshots' AND auth.uid()::text = (storage.foldername(name))[1]);
 
+
