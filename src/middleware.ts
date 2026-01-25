@@ -39,6 +39,8 @@ export async function middleware(req: NextRequest) {
 
   const isAuthRoute = pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/forgot");
   const isProtected = pathname.startsWith("/app");
+  const isOnboarding = pathname.startsWith("/app/onboarding");
+  const hasOnboarded = Boolean((user as any)?.user_metadata?.onboarded);
 
   // Redirect unauthenticated users to login for protected routes.
   if (!user && isProtected && !isAuthRoute) {
@@ -48,10 +50,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Force onboarding for first-time users before allowing access to the app.
+  if (user && isProtected && !isOnboarding && !hasOnboarded) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/app/onboarding";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
   // Redirect logged-in users away from auth routes.
   if (user && isAuthRoute) {
     const url = req.nextUrl.clone();
-    url.pathname = "/app";
+    url.pathname = hasOnboarded ? "/app" : "/app/onboarding";
     return NextResponse.redirect(url);
   }
 
@@ -70,6 +80,7 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$|api).*)",
   ],
 };
+
 
 
 

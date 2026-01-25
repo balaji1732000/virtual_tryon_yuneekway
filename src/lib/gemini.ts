@@ -181,7 +181,14 @@ export const generateModelWithDress = async (
       2) PRESERVE the EXACT hair style, length, color, and texture from the reference image across ALL angles. Hair must look identical.
       3) Remove original clothes and dress the model ONLY with the GARMENT IMAGE. Preserve fabric color/texture without distortion.
       3b) Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
-      3c)       GARMENT ID LOCK (critical):
+      3c) COMPLETE PRODUCT VISIBILITY (CRITICAL FOR PRODUCT PACK):
+      - The ENTIRE garment must be fully visible within the frame from edge to edge.
+      - Do NOT crop any part of the product (sleeves, hem, collar, cuffs, waistband, etc.).
+      - Use appropriate camera distance to ensure the complete product fits in frame.
+      - Frame the shot like professional ecommerce product photography: full product visible with proper spacing around edges.
+      - For "Full body" angle: show complete person from head to toe with full garment visible, including appropriate footwear.
+      - For other angles (Front/Back/Side): ensure the entire garment is visible, not just a portion. All edges, seams, and design elements must be within frame.
+      3d) GARMENT ID LOCK (critical):
       - Treat the garment photo(s) as the ONLY truth. Do NOT invent, remove, or relocate details.
       - Closures: preserve exact closure type (zipper/buttons/none) and placement; keep center lines straight.
       - Pockets: preserve exact number, type, placement, and shape (if present).
@@ -229,6 +236,13 @@ export const generateModelWithDress = async (
       Resolution: ${imageSize}.
       Preserve the exact fabric, color, pattern, and design of the original garment.
       Output MUST include the full human model wearing the garment. DO NOT output an isolated product cutout or flat-lay.
+      COMPLETE PRODUCT VISIBILITY (CRITICAL):
+      - The ENTIRE garment must be fully visible within the frame from edge to edge.
+      - Do NOT crop any part of the product (sleeves, hem, collar, cuffs, waistband, etc.).
+      - Use appropriate camera distance to ensure the complete product fits in frame.
+      - Frame the shot like professional ecommerce product photography: full product visible with proper spacing around edges.
+      - For "Full body" angle: show complete person from head to toe with full garment visible, including appropriate footwear.
+      - For other angles (Front/Back/Side): ensure the entire garment is visible, not just a portion. All edges, seams, and design elements must be within frame.
       GARMENT ID LOCK (critical):
       - Treat the garment photo(s) as the ONLY truth. Do NOT invent, remove, or relocate details.
       - Closures: preserve exact closure type (zipper/buttons/none) and placement; keep center lines straight.
