@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     // Ensure Dodo customer exists.
     let dodoCustomerId: string | null = null;
-    const existing = await admin.from("billing_customers").select("dodo_customer_id").eq("user_id", user.id).maybeSingle();
+    const existing = await admin.from("billing_customers").select("dodo_customer_id, metadata").eq("user_id", user.id).maybeSingle();
     if (existing.data?.dodo_customer_id) {
       dodoCustomerId = existing.data.dodo_customer_id;
     } else {
@@ -57,6 +57,13 @@ export async function POST(req: NextRequest) {
         country,
       },
     });
+
+    // Store checkout session ID in customer metadata for later retrieval during sync
+    const currentMetadata = existing.data?.metadata || {};
+    await admin
+      .from("billing_customers")
+      .update({ metadata: { ...currentMetadata, last_checkout_session_id: checkout.session_id } })
+      .eq("user_id", user.id);
 
     return NextResponse.json({
       planCode: plan.code,

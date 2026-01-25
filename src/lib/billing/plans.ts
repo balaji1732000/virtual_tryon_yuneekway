@@ -53,11 +53,18 @@ export function getDodoProductIdForPlan(plan: BillingPlan): string {
   return id;
 }
 
+export function getPlanCodeForProductId(productId: string): PlanCode | null {
+  if (!productId) return null;
+  const match = Object.values(BILLING_PLANS).find((plan) => process.env[plan.dodoProductIdEnv] === productId);
+  return match?.code ?? null;
+}
+
 export function creditsCostForOperation(args: { operation: "generate" | "edit"; outputs?: number }) {
   // Simple model for now:
   // - 1 credit == 1 output image (generate or edit), regardless of 1K/2K/4K (your selected routing is Flash for all).
   const outputs = Math.max(1, Math.floor(args.outputs ?? 1));
   return outputs;
 }
+
 
 

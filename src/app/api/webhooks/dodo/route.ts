@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getDodoClient } from "@/lib/dodo";
 import { ensureCurrentMonthlyCredits } from "@/lib/billing/periods";
-import { getPlan, PlanCode } from "@/lib/billing/plans";
+import { getPlan, getPlanCodeForProductId, PlanCode } from "@/lib/billing/plans";
 
 function header(req: NextRequest, name: string) {
   return req.headers.get(name) || req.headers.get(name.toLowerCase()) || "";
@@ -66,7 +66,10 @@ export async function POST(req: NextRequest) {
   const dodoSubscriptionId = String(sub?.subscription_id || sub?.id || "");
   const status = String(sub?.status || "").toLowerCase() || "unknown";
   const planCode = String(sub?.metadata?.plan_code || evt?.data?.metadata?.plan_code || "") as PlanCode;
+  const productId = sub?.product_id ? String(sub.product_id) : "";
   const nextBillingDate = sub?.next_billing_date ? String(sub.next_billing_date) : null;
+  const resolvedPlanCode = (planCode || getPlanCodeForProductId(productId)) as PlanCode | "";
+  const planCodeToStore = resolvedPlanCode || "starter_monthly";
 
   let userId = String(sub?.metadata?.supabase_user_id || evt?.data?.metadata?.supabase_user_id || "");
   if (!userId && dodoCustomerId) {
@@ -77,18 +80,18 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ received: true, skipped: "unmapped_user" });
 
   // Ensure plan_code is valid (must exist in our config)
-  const plan = planCode ? getPlan(planCode) : null;
+  const plan = resolvedPlanCode ? getPlan(resolvedPlanCode) : null;
   if (!plan) {
     // Keep state, but do not create credits if we can't determine plan.
     await admin.from("billing_subscriptions").upsert(
       {
         user_id: userId,
-        plan_code: planCode || "starter_monthly",
+        plan_code: planCodeToStore,
         status,
         dodo_subscription_id: dodoSubscriptionId || null,
         current_period_end: nextBillingDate,
         updated_at: new Date().toISOString(),
-        metadata: { raw: sub?.metadata || {} },
+        metadata: { raw: sub?.metadata || {}, plan_code_unresolved: true, product_id: productId },
       } as any,
       { onConflict: "user_id" }
     );
@@ -105,7 +108,7 @@ export async function POST(req: NextRequest) {
       current_period_end: nextBillingDate,
       cancel_at_period_end: !!sub?.cancel_at_period_end,
       updated_at: new Date().toISOString(),
-      metadata: { ...(sub?.metadata || {}), event_type: eventType },
+      metadata: { ...(sub?.metadata || {}), event_type: eventType, product_id: productId },
     } as any,
     { onConflict: "user_id" }
   );
@@ -117,5 +120,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ received: true });
 }
+
 
 

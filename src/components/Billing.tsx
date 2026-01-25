@@ -25,15 +25,38 @@ export default function Billing() {
   const [error, setError] = useState<string | null>(null);
   const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
 
-  async function loadStatus() {
+  async function loadStatus(forceSync = false) {
     setError(null);
+    setLoading(true);
     try {
-      const res = await fetch("/api/billing/status", { cache: "no-store" });
+      const res = await fetch("/api/billing/status", { 
+        method: forceSync ? "POST" : "GET",
+        cache: "no-store" 
+      });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Failed to load billing status");
+      if (!res.ok) {
+        // Handle structured error responses
+        const errorMsg = json?.error || "Failed to load billing status";
+        const errorCode = json?.code || "unknown_error";
+        const errorDetails = json?.details || {};
+        
+        // Provide more helpful error messages based on error code
+        let displayError = errorMsg;
+        if (errorCode === "no_customer_id") {
+          displayError = "No Dodo customer ID found. Please click Subscribe first to create a customer account.";
+        } else if (errorCode === "no_subscription_found") {
+          displayError = errorMsg + (errorDetails?.customer_id ? ` (Customer ID: ${errorDetails.customer_id})` : "");
+        } else if (errorCode === "dodo_api_error") {
+          displayError = `Dodo API error: ${errorMsg}. Check your API keys and environment configuration.`;
+        }
+        
+        throw new Error(displayError);
+      }
       setStatus(json);
     } catch (e: any) {
       setError(e?.message || "Failed to load billing status");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -189,8 +212,8 @@ export default function Billing() {
               <div className="text-sm opacity-70">No active credit period.</div>
             )}
 
-            <button className="btn-secondary w-full" onClick={loadStatus} disabled={loading}>
-              Refresh
+            <button className="btn-secondary w-full" onClick={() => loadStatus(true)} disabled={loading}>
+              {loading ? "Syncing..." : "Refresh"}
             </button>
           </div>
         </div>

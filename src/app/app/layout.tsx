@@ -1,7 +1,13 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { LayoutGrid, User, Package, RefreshCw, UserPlus, Video, Scissors, Clock, Sparkles, CreditCard } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { FeedbackButton } from "@/components/FeedbackButton";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutGrid },
@@ -17,12 +23,26 @@ const nav = [
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-[280px_1fr]">
       <aside className="p-4 lg:p-6">
         <div className="glass-panel p-5">
           <div className="mb-5">
-            <div className="text-lg font-semibold tracking-tight">Yuneekwayai</div>
+            <Link href="/app" className="inline-flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl border border-[color:var(--sp-border)] bg-[color:var(--sp-panel)] p-1.5 shadow-sm flex items-center justify-center">
+                <Image
+                  src="/YuneekwayAI-transparent.png"
+                  alt="Yuneekwayai logo"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div className="text-lg font-semibold tracking-tight">YUNEEKWAYAI</div>
+            </Link>
           </div>
 
           <nav className="space-y-1">
@@ -56,6 +76,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
         <div className="glass-panel p-6">{children}</div>
       </main>
+
+      {/* Feedback System */}
+      <FeedbackButton onOpen={() => setIsFeedbackModalOpen(true)} />
+      <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} />
     </div>
   );
 }
